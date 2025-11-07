@@ -1,0 +1,2530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ward Academy - Systematic Review Screening Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        .highlight-include {
+            background-color: #86efac;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .highlight-exclude {
+            background-color: #fca5a5;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .highlight-methods {
+            background-color: #fde047;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        .study-card {
+            transition: all 0.3s ease;
+        }
+        .study-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 30px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+        .drag-drop-area {
+            border: 3px dashed #cbd5e1;
+            background-color: #f8fafc;
+            transition: all 0.3s ease;
+        }
+        .drag-drop-area.drag-over {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        .tab-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .decision-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-included {
+            background-color: #86efac;
+            color: #166534;
+        }
+        .badge-excluded {
+            background-color: #fca5a5;
+            color: #991b1b;
+        }
+        .badge-pending {
+            background-color: #fde047;
+            color: #854d0e;
+        }
+        .comparison-match {
+            background-color: #d1fae5;
+        }
+        .comparison-conflict {
+            background-color: #fee2e2;
+        }
+        table {
+            font-size: 14px;
+        }
+        td, th {
+            padding: 8px;
+        }
+        .abstract-cell {
+            max-width: 400px;
+        }
+        
+        /* Sticky header - MELHORADO */
+        .table-container {
+            position: relative;
+            overflow: auto;
+            max-height: calc(100vh - 400px);
+        }
+        
+        #spreadsheetTable thead th {
+            position: sticky;
+            top: 0;
+            background-color: #e5e7eb;
+            border-bottom: 2px solid #9ca3af;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+        }
+        
+        /* Row numbers */
+        .row-number {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            color: #6b7280;
+            text-align: center;
+            width: 50px;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
+        
+        #spreadsheetTable thead th.row-number {
+            z-index: 15;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-6 max-w-7xl">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold mb-2">Ward Academy - Systematic Review Screening Tool</h1>
+            <p class="text-blue-100">Ferramenta completa para triagem de revisões sistemáticas</p>
+        </div>
+
+        <!-- File Upload Area -->
+        <div id="uploadArea" class="drag-drop-area rounded-lg p-12 text-center mb-6">
+            <div class="flex justify-end mb-4">
+                <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm">
+                    📁 Meus Projetos
+                </button>
+            </div>
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <p class="text-xl mb-2 text-gray-700">Arraste e solte o arquivo RIS aqui</p>
+            <p class="text-sm text-gray-500 mb-4">ou</p>
+            <label class="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition inline-block">
+                Selecionar Arquivo
+                <input type="file" id="fileInput" accept=".txt,.ris" class="hidden">
+            </label>
+            <p class="text-xs text-gray-500 mt-4">Formatos aceitos: .txt, .ris</p>
+        </div>
+
+        <!-- Main App (Hidden initially) -->
+        <div id="mainApp" class="hidden">
+            <!-- Stats Dashboard -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="stats-card rounded-lg p-4 shadow-lg">
+                    <p class="text-sm opacity-90">Total de Estudos</p>
+                    <p class="text-3xl font-bold" id="totalStudies">0</p>
+                </div>
+                <div class="bg-green-500 text-white rounded-lg p-4 shadow-lg">
+                    <p class="text-sm opacity-90">Incluídos</p>
+                    <p class="text-3xl font-bold" id="includedCount">0</p>
+                </div>
+                <div class="bg-red-500 text-white rounded-lg p-4 shadow-lg">
+                    <p class="text-sm opacity-90">Excluídos</p>
+                    <p class="text-3xl font-bold" id="excludedCount">0</p>
+                </div>
+                <div class="bg-yellow-500 text-white rounded-lg p-4 shadow-lg">
+                    <p class="text-sm opacity-90">Pendentes</p>
+                    <p class="text-3xl font-bold" id="pendingCount">0</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-semibold text-gray-600">Projeto Atual:</span>
+                        <span id="currentProjectName" class="text-lg font-bold text-blue-600">Sem nome</span>
+                        <button onclick="renameProject()" class="text-xs text-blue-600 hover:text-blue-800">✏️ Renomear</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <span id="autoSaveStatus" class="text-xs text-green-600">✓ Auto-save ativo</span>
+                            <button onclick="toggleAutoSave()" id="autoSaveToggle" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">ON</button>
+                        </div>
+                        <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition text-sm">
+                            📁 Meus Projetos
+                        </button>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="showKeywordsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                        🔍 Configurar Keywords
+                    </button>
+                    <button onclick="exportDecisions()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                        💾 Exportar Projeto Completo
+                    </button>
+                    <button onclick="importDecisions()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        📥 Importar Projeto
+                    </button>
+                    <button onclick="showCompareModal()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
+                        🔄 Comparar Revisores
+                    </button>
+                    <button onclick="exportSpreadsheet()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        📊 Baixar Planilha Excel
+                    </button>
+                    <button onclick="showClaudeCommandModal()" class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-purple-700 transition">
+                        🤖 Comando Claude AI
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white rounded-lg shadow-lg mb-6">
+                <div class="flex border-b">
+                    <button onclick="switchTab('spreadsheet')" id="tabSpreadsheet" class="tab-button active flex-1 px-6 py-3 font-semibold">
+                        📊 Modo Planilha
+                    </button>
+                    <button onclick="switchTab('screening')" id="tabScreening" class="tab-button flex-1 px-6 py-3 font-semibold text-gray-600 hover:bg-gray-100">
+                        🔍 Modo Triagem
+                    </button>
+                </div>
+
+                <!-- Spreadsheet View -->
+                <div id="spreadsheetView" class="p-6">
+                    <div class="mb-4">
+                        <!-- Search and Filters -->
+                        <div class="flex gap-3 mb-3">
+                            <button onclick="toggleAllAbstracts()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition text-sm">
+                                👁️ Mostrar/Ocultar Abstracts
+                            </button>
+                            <select id="filterSpreadsheet" onchange="applyFilters()" class="border rounded px-4 py-2 text-sm">
+                                <option value="all">Todos os Estudos</option>
+                                <option value="included">Apenas Incluídos</option>
+                                <option value="excluded">Apenas Excluídos</option>
+                                <option value="pending">Apenas Pendentes</option>
+                            </select>
+                            <button onclick="toggleSearchHelp()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm">
+                                ❓ Ajuda
+                            </button>
+                        </div>
+                        
+                        <!-- Advanced Search -->
+                        <div class="mb-3">
+                            <div class="flex gap-2">
+                                <input type="text" 
+                                    id="searchInput" 
+                                    placeholder='🔍 Busca avançada: diabetes AND (treatment OR therapy) NOT "case report" author:Smith' 
+                                    class="flex-1 border rounded px-4 py-2 text-sm"
+                                    onkeyup="performAdvancedSearch()">
+                                <button onclick="clearSearch()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition text-sm">
+                                    ✖ Limpar
+                                </button>
+                            </div>
+                            <div id="searchHelp" class="hidden mt-2 bg-blue-50 p-3 rounded text-xs">
+                                <p class="font-semibold mb-2">📖 Operadores de Busca:</p>
+                                <ul class="space-y-1 text-gray-700">
+                                    <li><strong>AND</strong> - Todos os termos devem existir: <code>diabetes AND insulin</code></li>
+                                    <li><strong>OR</strong> - Qualquer termo pode existir: <code>treatment OR therapy</code></li>
+                                    <li><strong>NOT</strong> - Exclui termo: <code>surgery NOT pediatric</code></li>
+                                    <li><strong>"aspas"</strong> - Busca exata: <code>"randomized controlled trial"</code></li>
+                                    <li><strong>*</strong> - Wildcard: <code>surg* (surgery, surgical, surgeon)</code></li>
+                                    <li><strong>( )</strong> - Agrupamento: <code>diabetes AND (type1 OR type2)</code></li>
+                                    <li><strong>Campos específicos:</strong> <code>title:USMLE</code>, <code>author:Smith</code>, <code>year:2024</code>, <code>abstract:failure</code></li>
+                                </ul>
+                                <p class="mt-2 text-gray-600">Busca em: Título, Autores, Ano, Abstract, Observations</p>
+                            </div>
+                            
+                            <!-- Results Counter -->
+                            <div id="searchResults" class="mt-2 text-sm font-semibold">
+                                <span class="text-gray-700">Resultados: </span>
+                                <span id="searchCount" class="text-blue-600">0 estudos encontrados</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="w-full border-collapse border" id="spreadsheetTable">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="border p-2 row-number">#</th>
+                                    <th class="border p-2">STUDY ID</th>
+                                    <th class="border p-2">DOI LINK</th>
+                                    <th class="border p-2">TITLE</th>
+                                    <th class="border p-2">AUTHOR</th>
+                                    <th class="border p-2">YEAR</th>
+                                    <th class="border p-2">ABSTRACT</th>
+                                    <th class="border p-2">PDF FOUND?</th>
+                                    <th class="border p-2">INCLUDED</th>
+                                    <th class="border p-2">EXCLUDED</th>
+                                    <th class="border p-2">REASON FOR EXCLUSION</th>
+                                    <th class="border p-2">OBSERVATIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="spreadsheetBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Screening View -->
+                <div id="screeningView" class="p-6 hidden">
+                    <div class="flex gap-6">
+                        <!-- Study List -->
+                        <div class="w-1/3 border-r pr-4">
+                            <div class="mb-4">
+                                <!-- Search -->
+                                <input type="text" 
+                                    id="searchInputScreening" 
+                                    placeholder='🔍 Busca: diabetes AND treatment' 
+                                    class="w-full border rounded px-3 py-2 text-sm mb-2"
+                                    onkeyup="performAdvancedSearch()">
+                                <select id="filterScreening" onchange="applyFilters()" class="w-full border rounded px-4 py-2 text-sm mb-2">
+                                    <option value="all">Todos os Estudos</option>
+                                    <option value="included">Apenas Incluídos</option>
+                                    <option value="excluded">Apenas Excluídos</option>
+                                    <option value="pending">Apenas Pendentes</option>
+                                </select>
+                                
+                                <!-- Results Counter for Screening -->
+                                <div class="text-sm font-semibold mb-2">
+                                    <span class="text-gray-700">Resultados: </span>
+                                    <span id="searchCountScreening" class="text-blue-600">0 estudos</span>
+                                </div>
+                            </div>
+                            <div id="studyList" class="space-y-2 max-h-[600px] overflow-y-auto">
+                            </div>
+                        </div>
+
+                        <!-- Study Details -->
+                        <div class="w-2/3">
+                            <div id="studyDetails" class="text-gray-500 text-center py-12">
+                                Selecione um ou mais estudos para revisar
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keywords Modal -->
+        <div id="keywordsModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeKeywordsModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">Configurar Keywords para Highlight</h2>
+                
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2">🟢 Keywords para INCLUIR (highlight verde)</label>
+                    <textarea id="includeKeywords" class="w-full border rounded p-3 h-24" placeholder="Digite as palavras separadas por vírgula&#10;Ex: randomized controlled trial, meta-analysis, cohort study"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Use vírgula para separar. Use * para variações (ex: random*)</p>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2">🔴 Keywords para EXCLUIR (highlight vermelho)</label>
+                    <textarea id="excludeKeywords" class="w-full border rounded p-3 h-24" placeholder="Digite as palavras separadas por vírgula&#10;Ex: case report, editorial, letter, animal study"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Use vírgula para separar. Use * para variações (ex: animal*)</p>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block font-semibold mb-2">🟡 Keywords de METODOLOGIA (highlight amarelo)</label>
+                    <textarea id="methodsKeywords" class="w-full border rounded p-3 h-24" placeholder="Padrão: introduction, method*, result*, conclusion*, background, discussion"></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Use vírgula para separar. Use * para variações</p>
+                </div>
+
+                <button onclick="applyKeywords()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+                    Aplicar Keywords
+                </button>
+            </div>
+        </div>
+
+        <!-- Compare Modal -->
+        <div id="compareModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeCompareModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">Comparar Decisões de Revisores</h2>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-3">Selecione 2 ou mais arquivos de decisões para comparar:</p>
+                    <input type="file" id="compareFiles" accept=".json,.xlsx" multiple class="w-full border rounded p-2">
+                </div>
+
+                <button onclick="compareReviewers()" class="w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition font-semibold">
+                    Comparar Revisores
+                </button>
+
+                <div id="comparisonResults" class="mt-6"></div>
+            </div>
+        </div>
+
+        <!-- Claude Command Modal -->
+        <div id="claudeCommandModal" class="modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <span class="close" onclick="closeClaudeCommandModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">🤖 Comando para Claude AI</h2>
+                
+                <div class="mb-4">
+                    <label class="block font-semibold mb-2">Intervalo de Estudos</label>
+                    <div class="flex gap-3 items-center">
+                        <input type="number" id="rangeStart" min="1" placeholder="De" class="border rounded px-3 py-2 w-24">
+                        <span>até</span>
+                        <input type="number" id="rangeEnd" min="1" placeholder="Até" class="border rounded px-3 py-2 w-24">
+                        <span class="text-sm text-gray-500" id="rangeInfo"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block font-semibold">Framework PICO/PECO (Personalizável)</label>
+                        <div class="flex gap-2">
+                            <button onclick="addPicoField()" class="text-xs bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600">
+                                ➕ Adicionar Campo
+                            </button>
+                            <button onclick="resetPicoFields()" class="text-xs bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">
+                                🔄 Resetar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="picoFieldsContainer">
+                        <!-- Dynamic PICO fields will be inserted here -->
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mb-4">
+                    <button onclick="generateClaudeCommand()" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-lg hover:from-pink-600 hover:to-purple-700 transition font-semibold">
+                        📋 Copiar Comando para Claude
+                    </button>
+                    <button onclick="showClaudeResponseParser()" class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition font-semibold">
+                        📥 Colar Resposta do Claude
+                    </button>
+                </div>
+
+                <div id="claudeCommandOutput" class="mt-4 hidden">
+                    <label class="block font-semibold mb-2">Comando Gerado (Copiado!)</label>
+                    <textarea id="claudeCommandText" class="w-full border rounded p-3 h-64 font-mono text-xs" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Claude Response Parser Modal -->
+        <div id="claudeResponseModal" class="modal">
+            <div class="modal-content" style="max-width: 1000px;">
+                <span class="close" onclick="closeClaudeResponseModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">📥 Processar Resposta do Claude AI</h2>
+                
+                <div class="mb-4 bg-blue-50 p-4 rounded-lg">
+                    <p class="text-sm text-blue-800 mb-2">
+                        <strong>💡 Como usar:</strong>
+                    </p>
+                    <ol class="text-xs text-blue-700 list-decimal list-inside space-y-1">
+                        <li>Cole a resposta completa do Claude (pode incluir texto antes/depois da tabela)</li>
+                        <li>O app extrai automaticamente a tabela com decisões</li>
+                        <li>Revise o preview das decisões</li>
+                        <li>Clique "Aplicar Decisões" para atualizar seus estudos</li>
+                    </ol>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-semibold mb-2">Cole a resposta do Claude aqui:</label>
+                    <textarea id="claudeResponseInput" class="w-full border rounded p-3 h-48 font-mono text-xs" placeholder="Cole toda a resposta do Claude aqui (incluindo a tabela)..."></textarea>
+                </div>
+
+                <button onclick="parseClaudeResponse()" class="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold mb-4">
+                    🔍 Processar Resposta
+                </button>
+
+                <div id="claudeResponsePreview" class="hidden">
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-lg mb-2">Preview das Decisões:</h3>
+                        <div class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                            <table class="w-full text-xs border-collapse">
+                                <thead class="bg-gray-200 sticky top-0">
+                                    <tr>
+                                        <th class="border p-2 text-left">Study ID</th>
+                                        <th class="border p-2 text-left">Title</th>
+                                        <th class="border p-2 text-left">Decision</th>
+                                        <th class="border p-2 text-left">Reason</th>
+                                        <th class="border p-2">Match?</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="claudeResponseTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            <strong>⚠️ Atenção:</strong> Revise cuidadosamente antes de aplicar. 
+                            Estudos não encontrados (Match? = ❌) serão ignorados.
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="applyClaudeDecisions()" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold">
+                            ✅ Aplicar Decisões
+                        </button>
+                        <button onclick="closeClaudeResponseModal()" class="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition font-semibold">
+                            ❌ Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects Management Modal -->
+        <div id="projectsModal" class="modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <span class="close" onclick="closeProjectsModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">📁 Gerenciamento de Projetos</h2>
+                
+                <div class="mb-6 bg-blue-50 p-4 rounded-lg">
+                    <p class="text-sm text-blue-800 mb-2">
+                        <strong>💡 Dica:</strong> Todos os seus projetos são salvos automaticamente no navegador. 
+                        Você pode trabalhar em múltiplos projetos e alternar entre eles facilmente!
+                    </p>
+                </div>
+
+                <div class="mb-6">
+                    <button onclick="createNewProject()" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold">
+                        ➕ Criar Novo Projeto
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="font-semibold text-lg mb-3">Projetos Salvos:</h3>
+                    <div id="projectsList" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Projects will be listed here -->
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t">
+                    <p class="text-xs text-gray-500">
+                        <strong>Atenção:</strong> Os projetos são salvos localmente no seu navegador. 
+                        Para backup externo, use "Exportar Projeto Completo" em cada projeto.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let studies = [];
+        let currentView = 'spreadsheet';
+        let selectedStudies = new Set();
+        let keywords = {
+            include: [],
+            exclude: [],
+            methods: ['introduction', 'method*', 'result*', 'conclusion*', 'background', 'discussion']
+        };
+        let showAbstracts = true;
+        let comparisonMode = false;
+        let comparisonData = null;
+        let currentProject = null;
+        let autoSaveEnabled = true;
+        let autoSaveTimer = null;
+        let currentSearchQuery = '';
+        let searchFilteredStudies = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDragAndDrop();
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+            updateRangeInfo();
+            checkForSavedProjects();
+            updateResultsCounter();
+        });
+
+        function setupDragAndDrop() {
+            const dropArea = document.getElementById('uploadArea');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropArea.addEventListener('drop', handleDrop, false);
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    parseRISFile(content);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function parseRISFile(content) {
+            // Ask for project name if no current project
+            if (!currentProject) {
+                const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
+                if (!projectName) {
+                    alert('É necessário dar um nome ao projeto!');
+                    return;
+                }
+
+                const projectId = generateProjectId();
+                currentProject = {
+                    id: projectId,
+                    name: projectName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    studies: [],
+                    keywords: keywords
+                };
+            }
+
+            studies = [];
+            const lines = content.split('\n');
+            let currentStudy = {};
+            let currentField = '';
+            let authors = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('TY  -')) {
+                    currentStudy = {
+                        id: '',
+                        doi: '',
+                        title: '',
+                        authors: [],
+                        year: '',
+                        abstract: '',
+                        pdfFound: false,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: ''
+                    };
+                    authors = [];
+                } else if (line.startsWith('TI  -') || line.startsWith('ST  -')) {
+                    currentStudy.title = line.substring(6).trim();
+                    currentField = 'title';
+                } else if (line.startsWith('AU  -')) {
+                    authors.push(line.substring(6).trim());
+                    currentField = 'author';
+                } else if (line.startsWith('PY  -')) {
+                    currentStudy.year = line.substring(6).trim();
+                    currentField = 'year';
+                } else if (line.startsWith('AB  -')) {
+                    currentStudy.abstract = line.substring(6).trim();
+                    currentField = 'abstract';
+                } else if (line.startsWith('DO  -')) {
+                    currentStudy.doi = line.substring(6).trim();
+                    currentField = 'doi';
+                } else if (line.startsWith('ID  -')) {
+                    currentStudy.id = line.substring(6).trim();
+                    currentField = 'id';
+                } else if (line.startsWith('ER  -')) {
+                    if (currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        if (!currentStudy.id) {
+                            currentStudy.id = studies.length + 1;
+                        }
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = {};
+                    authors = [];
+                    currentField = '';
+                } else if (line.length > 0 && !line.includes('  -') && currentField) {
+                    // Continuation of previous field
+                    if (currentField === 'title') {
+                        currentStudy.title += ' ' + line;
+                    } else if (currentField === 'abstract') {
+                        currentStudy.abstract += ' ' + line;
+                    }
+                }
+            }
+
+            if (studies.length > 0) {
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                updateStats();
+                renderSpreadsheet();
+                renderScreeningList();
+                updateRangeInfo();
+                updateResultsCounter();
+
+                // Save project
+                const projects = getAllProjects();
+                const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+                
+                if (existingIndex >= 0) {
+                    projects[existingIndex] = currentProject;
+                } else {
+                    projects.push(currentProject);
+                }
+                
+                saveProjectsList(projects);
+                document.getElementById('currentProjectName').textContent = currentProject.name;
+                
+                showToast('Projeto salvo com sucesso!', 'success');
+            } else {
+                alert('Nenhum estudo encontrado no arquivo. Verifique o formato.');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalStudies').textContent = studies.length;
+            document.getElementById('includedCount').textContent = studies.filter(s => s.included).length;
+            document.getElementById('excludedCount').textContent = studies.filter(s => s.excluded).length;
+            document.getElementById('pendingCount').textContent = studies.filter(s => !s.included && !s.excluded).length;
+        }
+
+        function updateResultsCounter() {
+            const filtered = getFilteredStudies();
+            const count = filtered.length;
+            
+            // Update spreadsheet view counter
+            const countSpan = document.getElementById('searchCount');
+            if (countSpan) {
+                countSpan.textContent = `${count} estudos encontrados`;
+            }
+            
+            // Update screening view counter
+            const countSpanScreening = document.getElementById('searchCountScreening');
+            if (countSpanScreening) {
+                countSpanScreening.textContent = `${count} estudos`;
+            }
+        }
+
+        function switchTab(tab) {
+            currentView = tab;
+            document.getElementById('tabSpreadsheet').classList.remove('active');
+            document.getElementById('tabScreening').classList.remove('active');
+            document.getElementById('spreadsheetView').classList.add('hidden');
+            document.getElementById('screeningView').classList.add('hidden');
+
+            if (tab === 'spreadsheet') {
+                document.getElementById('tabSpreadsheet').classList.add('active');
+                document.getElementById('spreadsheetView').classList.remove('hidden');
+            } else {
+                document.getElementById('tabScreening').classList.add('active');
+                document.getElementById('screeningView').classList.remove('hidden');
+            }
+        }
+
+        function applyHighlight(text) {
+            if (!text) return '';
+            
+            let highlightedText = text;
+            
+            // Apply include keywords (green)
+            keywords.include.forEach(keyword => {
+                const pattern = keyword.replace('*', '\\w*');
+                const regex = new RegExp(`(${pattern})`, 'gi');
+                highlightedText = highlightedText.replace(regex, '<span class="highlight-include">$1</span>');
+            });
+            
+            // Apply exclude keywords (red)
+            keywords.exclude.forEach(keyword => {
+                const pattern = keyword.replace('*', '\\w*');
+                const regex = new RegExp(`(${pattern})`, 'gi');
+                highlightedText = highlightedText.replace(regex, '<span class="highlight-exclude">$1</span>');
+            });
+            
+            // Apply methods keywords (yellow)
+            keywords.methods.forEach(keyword => {
+                const pattern = keyword.replace('*', '\\w*');
+                const regex = new RegExp(`(${pattern})`, 'gi');
+                highlightedText = highlightedText.replace(regex, '<span class="highlight-methods">$1</span>');
+            });
+            
+            return highlightedText;
+        }
+
+        function renderSpreadsheet() {
+            const tbody = document.getElementById('spreadsheetBody');
+            tbody.innerHTML = '';
+
+            const filteredStudies = getFilteredStudies();
+
+            filteredStudies.forEach((study, index) => {
+                const row = document.createElement('tr');
+                row.className = comparisonMode ? getComparisonClass(study) : '';
+                
+                const authorText = study.authors && study.authors.length > 0 
+                    ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const studyId = authorText && study.year 
+                    ? `${authorText}, ${study.year}`
+                    : study.id;
+
+                row.innerHTML = `
+                    <td class="border p-2 row-number text-sm">${index + 1}</td>
+                    <td class="border p-2 text-sm">${studyId}</td>
+                    <td class="border p-2 text-sm">
+                        ${study.doi ? `<a href="https://doi.org/${study.doi}" target="_blank" class="text-blue-600 hover:underline">🔗 ${study.doi}</a>` : '-'}
+                    </td>
+                    <td class="border p-2 text-sm font-semibold">${applyHighlight(study.title)}</td>
+                    <td class="border p-2 text-sm">${study.authors.join(', ')}</td>
+                    <td class="border p-2 text-sm">${study.year}</td>
+                    <td class="border p-2 abstract-cell text-xs">
+                        <div class="${showAbstracts ? '' : 'hidden'}" style="max-height: 150px; overflow-y: auto;">
+                            ${applyHighlight(study.abstract || '-')}
+                        </div>
+                    </td>
+                    <td class="border p-2 text-center">
+                        <input type="checkbox" ${study.pdfFound ? 'checked' : ''} 
+                            onchange="updateStudyField(${study.id}, 'pdfFound', this.checked)">
+                    </td>
+                    <td class="border p-2 text-center">
+                        <input type="checkbox" ${study.included ? 'checked' : ''} 
+                            onchange="updateDecision(${study.id}, 'included', this.checked)">
+                    </td>
+                    <td class="border p-2 text-center">
+                        <input type="checkbox" ${study.excluded ? 'checked' : ''} 
+                            onchange="updateDecision(${study.id}, 'excluded', this.checked)">
+                    </td>
+                    <td class="border p-2">
+                        <input type="text" value="${study.reasonExclusion || ''}" 
+                            onchange="updateStudyField(${study.id}, 'reasonExclusion', this.value)"
+                            class="w-full border rounded px-2 py-1 text-xs">
+                    </td>
+                    <td class="border p-2">
+                        <input type="text" value="${study.observations || ''}" 
+                            onchange="updateStudyField(${study.id}, 'observations', this.value)"
+                            class="w-full border rounded px-2 py-1 text-xs">
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderScreeningList() {
+            const listDiv = document.getElementById('studyList');
+            listDiv.innerHTML = '';
+
+            const filteredStudies = getFilteredStudies();
+
+            filteredStudies.forEach((study, index) => {
+                const card = document.createElement('div');
+                card.className = `study-card p-4 border rounded-lg cursor-pointer ${selectedStudies.has(study.id) ? 'bg-blue-50 border-blue-500' : 'bg-white hover:bg-gray-50'}`;
+                card.onclick = () => toggleStudySelection(study.id);
+
+                const badge = study.included ? 'badge-included' : (study.excluded ? 'badge-excluded' : 'badge-pending');
+                const badgeText = study.included ? 'Incluído' : (study.excluded ? 'Excluído' : 'Pendente');
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-mono text-gray-500">#${study.id}</span>
+                        <span class="decision-badge ${badge}">${badgeText}</span>
+                    </div>
+                    <h3 class="font-semibold text-sm mb-1">${study.title.substring(0, 80)}...</h3>
+                    <p class="text-xs text-gray-600">${study.authors[0] || ''} ${study.year}</p>
+                `;
+                listDiv.appendChild(card);
+            });
+        }
+
+        function toggleStudySelection(studyId) {
+            if (selectedStudies.has(studyId)) {
+                selectedStudies.delete(studyId);
+            } else {
+                selectedStudies.add(studyId);
+            }
+            renderScreeningList();
+            renderStudyDetails();
+        }
+
+        function renderStudyDetails() {
+            const detailsDiv = document.getElementById('studyDetails');
+            
+            if (selectedStudies.size === 0) {
+                detailsDiv.innerHTML = '<p class="text-gray-500 text-center py-12">Selecione um ou mais estudos para revisar</p>';
+                return;
+            }
+
+            detailsDiv.innerHTML = '';
+
+            selectedStudies.forEach(studyId => {
+                const study = studies.find(s => s.id == studyId);
+                if (!study) return;
+
+                const detailCard = document.createElement('div');
+                detailCard.className = 'bg-white border rounded-lg p-6 mb-4 shadow';
+                
+                const authorText = study.authors && study.authors.length > 0 
+                    ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
+                    : '';
+
+                detailCard.innerHTML = `
+                    <div class="mb-4">
+                        <span class="text-xs font-mono text-gray-500">Study #${study.id}</span>
+                        <h2 class="text-xl font-bold mt-2">${applyHighlight(study.title)}</h2>
+                        <p class="text-sm text-gray-600 mt-2">
+                            ${study.authors.join(', ')} (${study.year})
+                        </p>
+                        ${study.doi ? `<a href="https://doi.org/${study.doi}" target="_blank" class="text-blue-600 hover:underline text-sm">🔗 https://doi.org/${study.doi}</a>` : ''}
+                    </div>
+
+                    <div class="mb-4">
+                        <h3 class="font-semibold mb-2">Abstract</h3>
+                        <div class="bg-gray-50 p-4 rounded text-sm max-h-64 overflow-y-auto">
+                            ${applyHighlight(study.abstract || 'Sem abstract disponível')}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block font-semibold mb-2 text-sm">Motivo da Exclusão</label>
+                        <input type="text" value="${study.reasonExclusion || ''}" 
+                            onchange="updateStudyField(${study.id}, 'reasonExclusion', this.value); renderScreeningList();"
+                            class="w-full border rounded px-3 py-2 text-sm"
+                            placeholder="Digite o motivo caso exclua o estudo">
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="makeDecision(${study.id}, 'include')" 
+                            class="flex-1 ${study.included ? 'bg-green-600' : 'bg-green-500 hover:bg-green-600'} text-white px-6 py-3 rounded-lg transition font-semibold">
+                            ✓ Incluir
+                        </button>
+                        <button onclick="makeDecision(${study.id}, 'exclude')" 
+                            class="flex-1 ${study.excluded ? 'bg-red-600' : 'bg-red-500 hover:bg-red-600'} text-white px-6 py-3 rounded-lg transition font-semibold">
+                            ✗ Excluir
+                        </button>
+                    </div>
+                `;
+                
+                detailsDiv.appendChild(detailCard);
+            });
+        }
+
+        function makeDecision(studyId, decision) {
+            const study = studies.find(s => s.id == studyId);
+            if (!study) return;
+
+            if (decision === 'include') {
+                study.included = true;
+                study.excluded = false;
+            } else {
+                study.included = false;
+                study.excluded = true;
+            }
+
+            updateStats();
+            renderScreeningList();
+            renderStudyDetails();
+            if (currentView === 'spreadsheet') {
+                renderSpreadsheet();
+            }
+            autoSave();
+        }
+
+        function updateDecision(studyId, field, value) {
+            const study = studies.find(s => s.id == studyId);
+            if (!study) return;
+
+            if (field === 'included' && value) {
+                study.included = true;
+                study.excluded = false;
+            } else if (field === 'excluded' && value) {
+                study.excluded = true;
+                study.included = false;
+            } else {
+                study[field] = value;
+            }
+
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            renderStudyDetails();
+            autoSave();
+        }
+
+        function updateStudyField(studyId, field, value) {
+            const study = studies.find(s => s.id == studyId);
+            if (study) {
+                study[field] = value;
+                autoSave();
+            }
+        }
+
+        function toggleAllAbstracts() {
+            showAbstracts = !showAbstracts;
+            renderSpreadsheet();
+        }
+
+        function getFilteredStudies() {
+            const filterSelect = currentView === 'spreadsheet' 
+                ? document.getElementById('filterSpreadsheet')
+                : document.getElementById('filterScreening');
+            
+            if (!filterSelect) return studies;
+            
+            const filter = filterSelect.value;
+            let filtered = studies;
+
+            // Apply status filter first
+            if (filter === 'included') {
+                filtered = studies.filter(s => s.included);
+            } else if (filter === 'excluded') {
+                filtered = studies.filter(s => s.excluded);
+            } else if (filter === 'pending') {
+                filtered = studies.filter(s => !s.included && !s.excluded);
+            }
+
+            // Apply search filter if active
+            if (currentSearchQuery && searchFilteredStudies.length >= 0) {
+                const searchIds = new Set(searchFilteredStudies.map(s => s.id));
+                filtered = filtered.filter(s => searchIds.has(s.id));
+            }
+
+            return filtered;
+        }
+
+        function applyFilters() {
+            if (currentView === 'spreadsheet') {
+                renderSpreadsheet();
+            } else {
+                renderScreeningList();
+                selectedStudies.clear();
+                renderStudyDetails();
+            }
+            updateResultsCounter();
+        }
+
+        // Keywords Modal
+        function showKeywordsModal() {
+            document.getElementById('includeKeywords').value = keywords.include.join(', ');
+            document.getElementById('excludeKeywords').value = keywords.exclude.join(', ');
+            document.getElementById('methodsKeywords').value = keywords.methods.join(', ');
+            document.getElementById('keywordsModal').style.display = 'block';
+        }
+
+        function closeKeywordsModal() {
+            document.getElementById('keywordsModal').style.display = 'none';
+        }
+
+        function applyKeywords() {
+            keywords.include = document.getElementById('includeKeywords').value
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+            
+            keywords.exclude = document.getElementById('excludeKeywords').value
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+            
+            keywords.methods = document.getElementById('methodsKeywords').value
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+
+            closeKeywordsModal();
+            renderSpreadsheet();
+            renderStudyDetails();
+            autoSave();
+        }
+
+        // Export/Import Functions - EXPORTAÇÃO COMPLETA DO PROJETO
+        function exportDecisions() {
+            if (!currentProject) {
+                alert('Nenhum projeto ativo para exportar!');
+                return;
+            }
+
+            const exportData = {
+                projectName: currentProject.name,
+                projectId: currentProject.id,
+                createdAt: currentProject.createdAt,
+                updatedAt: new Date().toISOString(),
+                exportedAt: new Date().toISOString(),
+                version: '2.0',
+                keywords: keywords,
+                studies: studies.map(s => ({
+                    id: s.id,
+                    doi: s.doi,
+                    title: s.title,
+                    authors: s.authors,
+                    year: s.year,
+                    abstract: s.abstract,
+                    included: s.included,
+                    excluded: s.excluded,
+                    reasonExclusion: s.reasonExclusion,
+                    observations: s.observations,
+                    pdfFound: s.pdfFound
+                })),
+                stats: {
+                    total: studies.length,
+                    included: studies.filter(s => s.included).length,
+                    excluded: studies.filter(s => s.excluded).length,
+                    pending: studies.filter(s => !s.included && !s.excluded).length
+                }
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${currentProject.name.replace(/[^a-z0-9]/gi, '_')}_COMPLETO_${Date.now()}.json`;
+            link.click();
+            
+            showToast('Projeto completo exportado com sucesso!', 'success');
+        }
+
+        function importDecisions() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,.xlsx';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (file.name.endsWith('.json')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            
+                            // Verificar se é exportação completa ou antiga
+                            if (data.version && data.version === '2.0' && data.projectName) {
+                                // Importação completa
+                                importCompleteProject(data);
+                            } else {
+                                // Importação antiga (só decisões)
+                                applyImportedDecisions(data.studies || data);
+                                showToast('Decisões importadas com sucesso!', 'success');
+                            }
+                        } catch (error) {
+                            alert('Erro ao importar arquivo JSON: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                } else if (file.name.endsWith('.xlsx')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const data = new Uint8Array(event.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                            
+                            const decisions = jsonData.map(row => ({
+                                id: row['STUDY ID'] || row['ID'],
+                                included: row['INCLUDED'] === 'TRUE' || row['INCLUDED'] === true,
+                                excluded: row['EXCLUDED'] === 'TRUE' || row['EXCLUDED'] === true,
+                                reasonExclusion: row['REASON FOR EXCLUSION'] || '',
+                                observations: row['OBSERVATIONS'] || '',
+                                pdfFound: row['PDF FOUND?'] === 'TRUE' || row['PDF FOUND?'] === true
+                            }));
+                            
+                            applyImportedDecisions(decisions);
+                            showToast('Decisões importadas da planilha com sucesso!', 'success');
+                        } catch (error) {
+                            alert('Erro ao importar planilha: ' + error.message);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            };
+            input.click();
+        }
+
+        function importCompleteProject(data) {
+            const projectId = generateProjectId();
+            
+            // Criar novo projeto com dados importados
+            const importedProject = {
+                id: projectId,
+                name: data.projectName + ' (Importado)',
+                createdAt: data.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                studies: data.studies,
+                keywords: data.keywords || keywords
+            };
+
+            // Adicionar à lista de projetos
+            const projects = getAllProjects();
+            projects.push(importedProject);
+            saveProjectsList(projects);
+
+            // Carregar o projeto importado
+            currentProject = importedProject;
+            studies = data.studies;
+            keywords = data.keywords || keywords;
+
+            // Update UI
+            document.getElementById('currentProjectName').textContent = importedProject.name;
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            updateRangeInfo();
+            updateResultsCounter();
+            
+            showToast(`Projeto "${importedProject.name}" importado completamente!`, 'success');
+        }
+
+        function applyImportedDecisions(importedStudies) {
+            importedStudies.forEach(imported => {
+                const study = studies.find(s => s.id == imported.id || s.title === imported.title);
+                if (study) {
+                    study.included = imported.included || false;
+                    study.excluded = imported.excluded || false;
+                    study.reasonExclusion = imported.reasonExclusion || '';
+                    study.observations = imported.observations || '';
+                    study.pdfFound = imported.pdfFound || false;
+                }
+            });
+            
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            renderStudyDetails();
+            autoSave();
+        }
+
+        function exportSpreadsheet() {
+            const data = studies.map(s => {
+                const authorText = s.authors && s.authors.length > 0 
+                    ? s.authors[0] + (s.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const studyId = authorText && s.year 
+                    ? `${authorText}, ${s.year}`
+                    : s.id;
+
+                return {
+                    'STUDY ID': studyId,
+                    'DOI LINK': s.doi ? `https://doi.org/${s.doi}` : '',
+                    'TITLE': s.title,
+                    'AUTHOR': s.authors.join(', '),
+                    'YEAR': s.year,
+                    'ABSTRACT': s.abstract,
+                    'PDF FOUND?': s.pdfFound ? 'TRUE' : 'FALSE',
+                    'INCLUDED': s.included ? 'TRUE' : 'FALSE',
+                    'EXCLUDED': s.excluded ? 'TRUE' : 'FALSE',
+                    'REASON FOR EXCLUSION': s.reasonExclusion,
+                    'OBSERVATIONS': s.observations
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Studies');
+            XLSX.writeFile(wb, `systematic_review_${Date.now()}.xlsx`);
+        }
+
+        // Compare Reviewers
+        function showCompareModal() {
+            document.getElementById('compareModal').style.display = 'block';
+        }
+
+        function closeCompareModal() {
+            document.getElementById('compareModal').style.display = 'none';
+        }
+
+        function compareReviewers() {
+            const filesInput = document.getElementById('compareFiles');
+            const files = filesInput.files;
+            
+            if (files.length < 2) {
+                alert('Selecione pelo menos 2 arquivos para comparar');
+                return;
+            }
+
+            const promises = Array.from(files).map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            resolve({
+                                reviewer: data.reviewer || data.projectName || file.name,
+                                studies: data.studies
+                            });
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            });
+
+            Promise.all(promises).then(reviewersData => {
+                displayComparison(reviewersData);
+            }).catch(error => {
+                alert('Erro ao carregar arquivos: ' + error.message);
+            });
+        }
+
+        function displayComparison(reviewersData) {
+            const resultsDiv = document.getElementById('comparisonResults');
+            
+            // Calculate agreements and disagreements
+            const studyComparisons = studies.map(study => {
+                const decisions = reviewersData.map(r => {
+                    const reviewerStudy = r.studies.find(s => s.id == study.id);
+                    return {
+                        reviewer: r.reviewer,
+                        included: reviewerStudy ? reviewerStudy.included : false,
+                        excluded: reviewerStudy ? reviewerStudy.excluded : false
+                    };
+                });
+
+                const allIncluded = decisions.every(d => d.included);
+                const allExcluded = decisions.every(d => d.excluded);
+                const agreement = allIncluded || allExcluded;
+
+                return {
+                    study: study,
+                    decisions: decisions,
+                    agreement: agreement,
+                    status: allIncluded ? 'included' : (allExcluded ? 'excluded' : 'conflict')
+                };
+            });
+
+            const agreements = studyComparisons.filter(sc => sc.agreement).length;
+            const disagreements = studyComparisons.filter(sc => !sc.agreement).length;
+
+            let html = `
+                <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h3 class="font-bold text-lg mb-2">Resumo da Comparação</h3>
+                    <p class="text-sm">Revisores: ${reviewersData.map(r => r.reviewer).join(', ')}</p>
+                    <p class="text-sm">Total de estudos: ${studies.length}</p>
+                    <p class="text-sm text-green-600">✓ Concordâncias: ${agreements}</p>
+                    <p class="text-sm text-red-600">✗ Discordâncias: ${disagreements}</p>
+                </div>
+
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+            `;
+
+            studyComparisons.forEach(sc => {
+                const bgClass = sc.agreement ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300';
+                html += `
+                    <div class="${bgClass} border p-3 rounded">
+                        <h4 class="font-semibold text-sm mb-2">${sc.study.title.substring(0, 100)}...</h4>
+                        <div class="text-xs space-y-1">
+                `;
+                
+                sc.decisions.forEach(d => {
+                    const decisionText = d.included ? '✓ Incluir' : (d.excluded ? '✗ Excluir' : '⚪ Pendente');
+                    html += `<p>${d.reviewer}: ${decisionText}</p>`;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+
+            // Store comparison data
+            comparisonData = studyComparisons;
+        }
+
+        function getComparisonClass(study) {
+            if (!comparisonData) return '';
+            const comparison = comparisonData.find(c => c.study.id == study.id);
+            return comparison && comparison.agreement ? 'comparison-match' : 'comparison-conflict';
+        }
+
+        // Claude Command
+        let picoFields = [
+            { label: 'POPULATION', placeholder: 'Describe your population/participants...', value: '' },
+            { label: 'INTERVENTION', placeholder: 'Describe the intervention/exposure...', value: '' },
+            { label: 'COMPARISON', placeholder: 'Describe the comparison/control (if applicable)...', value: '' },
+            { label: 'OUTCOME', placeholder: 'Describe the outcomes of interest...', value: '' }
+        ];
+        let parsedClaudeDecisions = [];
+
+        function showClaudeCommandModal() {
+            renderPicoFields();
+            document.getElementById('claudeCommandModal').style.display = 'block';
+            updateRangeInfo();
+        }
+
+        function closeClaudeCommandModal() {
+            document.getElementById('claudeCommandModal').style.display = 'none';
+        }
+
+        function renderPicoFields() {
+            const container = document.getElementById('picoFieldsContainer');
+            container.innerHTML = '';
+
+            picoFields.forEach((field, index) => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'mb-2 flex gap-2 items-start';
+                fieldDiv.innerHTML = `
+                    <div class="flex-1">
+                        <input type="text" 
+                            id="picoFieldLabel_${index}" 
+                            value="${field.label}" 
+                            placeholder="Label (ex: POPULATION)"
+                            class="w-full border rounded px-2 py-1 text-xs font-semibold mb-1"
+                            onchange="updatePicoFieldLabel(${index}, this.value)">
+                        <textarea 
+                            id="picoField_${index}" 
+                            class="w-full border rounded p-2 text-sm" 
+                            placeholder="${field.placeholder}" 
+                            rows="2"
+                            onchange="updatePicoFieldValue(${index}, this.value)">${field.value}</textarea>
+                    </div>
+                    <button onclick="removePicoField(${index})" 
+                        class="text-red-500 hover:text-red-700 mt-6" 
+                        title="Remover campo">
+                        🗑️
+                    </button>
+                `;
+                container.appendChild(fieldDiv);
+            });
+        }
+
+        function addPicoField() {
+            const newFieldName = prompt('Nome do novo campo (ex: INTERVENTION 2, SETTING, TIMEFRAME):', 'CUSTOM FIELD');
+            if (!newFieldName) return;
+
+            picoFields.push({
+                label: newFieldName.toUpperCase(),
+                placeholder: `Describe ${newFieldName.toLowerCase()}...`,
+                value: ''
+            });
+            renderPicoFields();
+            showToast('Campo adicionado!', 'success');
+        }
+
+        function removePicoField(index) {
+            if (picoFields.length <= 1) {
+                alert('Você precisa de pelo menos 1 campo!');
+                return;
+            }
+            if (confirm(`Remover campo "${picoFields[index].label}"?`)) {
+                picoFields.splice(index, 1);
+                renderPicoFields();
+                showToast('Campo removido!', 'success');
+            }
+        }
+
+        function updatePicoFieldLabel(index, value) {
+            picoFields[index].label = value.toUpperCase();
+        }
+
+        function updatePicoFieldValue(index, value) {
+            picoFields[index].value = value;
+        }
+
+        function resetPicoFields() {
+            if (confirm('Resetar para campos padrão PICO?')) {
+                picoFields = [
+                    { label: 'POPULATION', placeholder: 'Describe your population/participants...', value: '' },
+                    { label: 'INTERVENTION', placeholder: 'Describe the intervention/exposure...', value: '' },
+                    { label: 'COMPARISON', placeholder: 'Describe the comparison/control (if applicable)...', value: '' },
+                    { label: 'OUTCOME', placeholder: 'Describe the outcomes of interest...', value: '' }
+                ];
+                renderPicoFields();
+                showToast('Campos resetados!', 'success');
+            }
+        }
+
+        function updateRangeInfo() {
+            const infoSpan = document.getElementById('rangeInfo');
+            if (infoSpan) {
+                infoSpan.textContent = `(Total: ${studies.length} estudos)`;
+            }
+            
+            const rangeEnd = document.getElementById('rangeEnd');
+            if (rangeEnd) {
+                rangeEnd.max = studies.length;
+                rangeEnd.placeholder = studies.length.toString();
+            }
+        }
+
+        function generateClaudeCommand() {
+            const start = parseInt(document.getElementById('rangeStart').value) || 1;
+            const end = parseInt(document.getElementById('rangeEnd').value) || studies.length;
+            
+            if (start < 1 || end > studies.length || start > end) {
+                alert('Intervalo inválido! Verifique os valores.');
+                return;
+            }
+
+            // Build PICO section from dynamic fields
+            let picoSection = '';
+            picoFields.forEach(field => {
+                const value = field.value || '[PREENCHER]';
+                picoSection += `${field.label}: ${value}\n`;
+            });
+
+            let command = `NOW, BASED IN THE FRAMEWORK BELOW, YOU WILL DECIDE BETWEEN INCLUDE OR EXCLUDE THE STUDIES. SO YOU WILL REWRITE THE TABLE (JUST TITLE, STATUS, AND REASON FOR EXCLUSION) WITH YOUR DECISION. THE STUDY DESIGN CAN BE ANY WITH PATIENT GROUPS:
+
+${picoSection}
+HERE THE TABLE:
+
+| STUDY ID | TITLE | ABSTRACT | STATUS | REASON FOR EXCLUSION |
+|----------|-------|----------|--------|---------------------|
+`;
+
+            const selectedStudies = studies.slice(start - 1, end);
+            selectedStudies.forEach(study => {
+                const authorText = study.authors && study.authors.length > 0 
+                    ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const studyId = authorText && study.year 
+                    ? `${authorText}, ${study.year}`
+                    : study.id;
+                
+                const title = study.title.replace(/\|/g, '¦');
+                const abstract = (study.abstract || 'N/A').replace(/\|/g, '¦').substring(0, 500);
+                
+                command += `| ${studyId} | ${title} | ${abstract}... | PENDING | - |\n`;
+            });
+
+            document.getElementById('claudeCommandText').value = command;
+            document.getElementById('claudeCommandOutput').classList.remove('hidden');
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(command).then(() => {
+                showToast(`Comando copiado! (${selectedStudies.length} estudos selecionados)`, 'success');
+            });
+        }
+
+        // ==================== CLAUDE RESPONSE PARSER ====================
+
+        function showClaudeResponseParser() {
+            document.getElementById('claudeResponseModal').style.display = 'block';
+            document.getElementById('claudeResponsePreview').classList.add('hidden');
+            document.getElementById('claudeResponseInput').value = '';
+        }
+
+        function closeClaudeResponseModal() {
+            document.getElementById('claudeResponseModal').style.display = 'none';
+        }
+
+        function parseClaudeResponse() {
+            const input = document.getElementById('claudeResponseInput').value.trim();
+            
+            if (!input) {
+                alert('Cole a resposta do Claude primeiro!');
+                return;
+            }
+
+            parsedClaudeDecisions = [];
+
+            // Try different parsing strategies
+            const strategies = [
+                parseMarkdownTable,
+                parseTextTable,
+                parseBulletList,
+                parseSimpleLines
+            ];
+
+            let parsed = false;
+            for (const strategy of strategies) {
+                const result = strategy(input);
+                if (result && result.length > 0) {
+                    parsedClaudeDecisions = result;
+                    parsed = true;
+                    break;
+                }
+            }
+
+            if (!parsed || parsedClaudeDecisions.length === 0) {
+                alert('Não foi possível identificar decisões na resposta. Verifique o formato.');
+                return;
+            }
+
+            // Match with existing studies
+            parsedClaudeDecisions.forEach(decision => {
+                decision.matchedStudy = findMatchingStudy(decision.studyId, decision.title);
+            });
+
+            renderClaudeDecisionsPreview();
+            document.getElementById('claudeResponsePreview').classList.remove('hidden');
+            
+            const matchCount = parsedClaudeDecisions.filter(d => d.matchedStudy).length;
+            showToast(`${parsedClaudeDecisions.length} decisões encontradas, ${matchCount} com match!`, 'success');
+        }
+
+        function parseMarkdownTable(text) {
+            const decisions = [];
+            const lines = text.split('\n');
+            
+            // Look for table rows (contains |)
+            const tableLines = lines.filter(line => line.includes('|') && !line.match(/^[\s]*\|[\s-:]+\|/));
+            
+            if (tableLines.length < 2) return null; // Need at least header + 1 row
+            
+            // Skip header row(s)
+            const dataRows = tableLines.slice(1).filter(line => {
+                const cells = line.split('|').map(c => c.trim()).filter(c => c);
+                return cells.length >= 3; // At least ID, Title, Status
+            });
+
+            dataRows.forEach(line => {
+                const cells = line.split('|').map(c => c.trim()).filter(c => c);
+                
+                if (cells.length >= 3) {
+                    const studyId = cells[0];
+                    const title = cells[1];
+                    const status = cells[2];
+                    const reason = cells[3] || '';
+
+                    // Determine decision
+                    const statusUpper = status.toUpperCase();
+                    let decision = 'pending';
+                    if (statusUpper.includes('INCLUDE') || statusUpper.includes('INCLUIR')) {
+                        decision = 'include';
+                    } else if (statusUpper.includes('EXCLUDE') || statusUpper.includes('EXCLUIR')) {
+                        decision = 'exclude';
+                    }
+
+                    decisions.push({
+                        studyId: studyId,
+                        title: title,
+                        decision: decision,
+                        reason: reason,
+                        matchedStudy: null
+                    });
+                }
+            });
+
+            return decisions.length > 0 ? decisions : null;
+        }
+
+        function parseTextTable(text) {
+            // Similar to markdown but more flexible spacing
+            return parseMarkdownTable(text);
+        }
+
+        function parseBulletList(text) {
+            const decisions = [];
+            const lines = text.split('\n');
+            
+            lines.forEach(line => {
+                // Look for patterns like:
+                // - Author et al., YEAR - INCLUDE/EXCLUDE - reason
+                // * Author et al., YEAR: INCLUDE - reason
+                
+                const bulletMatch = line.match(/^[\s]*[-*•]\s*(.+?)\s*[-:]\s*(INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)/i);
+                if (bulletMatch) {
+                    const studyId = bulletMatch[1].trim();
+                    const statusMatch = bulletMatch[2].toUpperCase();
+                    const decision = statusMatch.includes('INCLUDE') || statusMatch.includes('INCLUIR') ? 'include' : 'exclude';
+                    
+                    // Try to extract reason (everything after decision)
+                    const reasonMatch = line.match(/(?:INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)[\s:-]*(.+)$/i);
+                    const reason = reasonMatch ? reasonMatch[1].trim() : '';
+
+                    decisions.push({
+                        studyId: studyId,
+                        title: '',
+                        decision: decision,
+                        reason: reason,
+                        matchedStudy: null
+                    });
+                }
+            });
+
+            return decisions.length > 0 ? decisions : null;
+        }
+
+        function parseSimpleLines(text) {
+            const decisions = [];
+            const lines = text.split('\n');
+            
+            lines.forEach(line => {
+                // Look for simple patterns:
+                // Author et al., YEAR - INCLUDE
+                // Author et al., YEAR: EXCLUDE - reason
+                
+                const match = line.match(/(.+?)\s*[-:]\s*(INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)/i);
+                if (match) {
+                    const studyId = match[1].trim();
+                    const statusMatch = match[2].toUpperCase();
+                    const decision = statusMatch.includes('INCLUDE') || statusMatch.includes('INCLUIR') ? 'include' : 'exclude';
+                    
+                    const reasonMatch = line.match(/(?:INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)[\s:-]*(.+)$/i);
+                    const reason = reasonMatch ? reasonMatch[1].trim() : '';
+
+                    decisions.push({
+                        studyId: studyId,
+                        title: '',
+                        decision: decision,
+                        reason: reason,
+                        matchedStudy: null
+                    });
+                }
+            });
+
+            return decisions.length > 0 ? decisions : null;
+        }
+
+        function findMatchingStudy(studyId, title) {
+            // Try exact Study ID match first
+            let match = studies.find(s => {
+                const authorText = s.authors && s.authors.length > 0 
+                    ? s.authors[0] + (s.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const fullId = authorText && s.year ? `${authorText}, ${s.year}` : s.id.toString();
+                return fullId === studyId || s.id.toString() === studyId;
+            });
+
+            if (match) return match;
+
+            // Try fuzzy title match
+            if (title) {
+                const titleLower = title.toLowerCase();
+                match = studies.find(s => {
+                    const studyTitleLower = s.title.toLowerCase();
+                    return studyTitleLower.includes(titleLower) || titleLower.includes(studyTitleLower);
+                });
+            }
+
+            if (match) return match;
+
+            // Try author name match
+            const authorMatch = studyId.match(/^([A-Za-z]+)/);
+            if (authorMatch) {
+                const authorName = authorMatch[1];
+                match = studies.find(s => 
+                    s.authors && s.authors.length > 0 && 
+                    s.authors[0].toLowerCase().includes(authorName.toLowerCase())
+                );
+            }
+
+            return match;
+        }
+
+        function renderClaudeDecisionsPreview() {
+            const tbody = document.getElementById('claudeResponseTableBody');
+            tbody.innerHTML = '';
+
+            parsedClaudeDecisions.forEach((decision, index) => {
+                const row = document.createElement('tr');
+                row.className = decision.matchedStudy ? 'bg-green-50' : 'bg-red-50';
+                
+                const decisionBadge = decision.decision === 'include' 
+                    ? '<span class="bg-green-500 text-white px-2 py-1 rounded text-xs">INCLUDE</span>'
+                    : decision.decision === 'exclude'
+                    ? '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs">EXCLUDE</span>'
+                    : '<span class="bg-gray-500 text-white px-2 py-1 rounded text-xs">PENDING</span>';
+
+                const matchBadge = decision.matchedStudy 
+                    ? '<span class="text-green-600 font-bold">✓</span>' 
+                    : '<span class="text-red-600 font-bold">✗</span>';
+
+                row.innerHTML = `
+                    <td class="border p-2">${decision.studyId}</td>
+                    <td class="border p-2">${decision.title || (decision.matchedStudy ? decision.matchedStudy.title.substring(0, 50) + '...' : '-')}</td>
+                    <td class="border p-2 text-center">${decisionBadge}</td>
+                    <td class="border p-2">${decision.reason || '-'}</td>
+                    <td class="border p-2 text-center">${matchBadge}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function applyClaudeDecisions() {
+            const matchedDecisions = parsedClaudeDecisions.filter(d => d.matchedStudy);
+            
+            if (matchedDecisions.length === 0) {
+                alert('Nenhuma decisão com match encontrada!');
+                return;
+            }
+
+            const confirmMsg = `Aplicar ${matchedDecisions.length} decisões?\n\n` +
+                `Isto irá atualizar os estudos correspondentes com as decisões do Claude.`;
+            
+            if (!confirm(confirmMsg)) return;
+
+            let appliedCount = 0;
+            matchedDecisions.forEach(decision => {
+                const study = decision.matchedStudy;
+                
+                if (decision.decision === 'include') {
+                    study.included = true;
+                    study.excluded = false;
+                    // REGRA: Se tem reason mas é INCLUDE, coloca em observations
+                    if (decision.reason && decision.reason !== '-') {
+                        study.observations = decision.reason;
+                        study.reasonExclusion = '';  // Limpa reason for exclusion
+                    }
+                } else if (decision.decision === 'exclude') {
+                    study.included = false;
+                    study.excluded = true;
+                    // REGRA: Se é EXCLUDE, coloca em reasonExclusion
+                    if (decision.reason) {
+                        study.reasonExclusion = decision.reason;
+                    }
+                }
+                appliedCount++;
+            });
+
+            // Update UI
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            if (selectedStudies.size > 0) {
+                renderStudyDetails();
+            }
+
+            // Auto-save
+            autoSave();
+
+            closeClaudeResponseModal();
+            showToast(`${appliedCount} decisões aplicadas com sucesso!`, 'success');
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // ==================== PROJECT MANAGEMENT & AUTO-SAVE ====================
+
+        function checkForSavedProjects() {
+            const projects = getAllProjects();
+            if (projects.length > 0) {
+                console.log(`Found ${projects.length} saved project(s)`);
+            }
+        }
+
+        function getAllProjects() {
+            const projectsData = localStorage.getItem('ward_academy_projects');
+            return projectsData ? JSON.parse(projectsData) : [];
+        }
+
+        function saveProjectsList(projects) {
+            localStorage.setItem('ward_academy_projects', JSON.stringify(projects));
+        }
+
+        function generateProjectId() {
+            return 'project_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function createNewProject() {
+            const projectName = prompt('Digite o nome do novo projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
+            if (!projectName) return;
+
+            const projectId = generateProjectId();
+            const projects = getAllProjects();
+            
+            const newProject = {
+                id: projectId,
+                name: projectName,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                studies: [],
+                keywords: {
+                    include: [],
+                    exclude: [],
+                    methods: ['introduction', 'method*', 'result*', 'conclusion*', 'background', 'discussion']
+                }
+            };
+
+            projects.push(newProject);
+            saveProjectsList(projects);
+            
+            alert(`Projeto "${projectName}" criado com sucesso!`);
+            updateProjectsList();
+        }
+
+        function loadProject(projectId) {
+            const projects = getAllProjects();
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                alert('Projeto não encontrado!');
+                return;
+            }
+
+            // Load project data
+            currentProject = project;
+            studies = project.studies || [];
+            keywords = project.keywords || keywords;
+
+            // Update UI
+            document.getElementById('currentProjectName').textContent = project.name;
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            updateRangeInfo();
+            updateResultsCounter();
+            
+            closeProjectsModal();
+            
+            showToast(`Projeto "${project.name}" carregado com sucesso!`, 'success');
+        }
+
+        function saveCurrentProject() {
+            if (!currentProject) return;
+
+            const projects = getAllProjects();
+            const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+            
+            if (projectIndex === -1) return;
+
+            // Update project data
+            projects[projectIndex].studies = studies;
+            projects[projectIndex].keywords = keywords;
+            projects[projectIndex].updatedAt = new Date().toISOString();
+
+            saveProjectsList(projects);
+            currentProject = projects[projectIndex];
+
+            updateAutoSaveStatus('saved');
+        }
+
+        function autoSave() {
+            if (!autoSaveEnabled || !currentProject) return;
+            
+            updateAutoSaveStatus('saving');
+            
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+            }
+
+            autoSaveTimer = setTimeout(() => {
+                saveCurrentProject();
+            }, 1000);
+        }
+
+        function updateAutoSaveStatus(status) {
+            const statusElement = document.getElementById('autoSaveStatus');
+            if (!statusElement) return;
+
+            switch(status) {
+                case 'saving':
+                    statusElement.textContent = '💾 Salvando...';
+                    statusElement.className = 'text-xs text-yellow-600';
+                    break;
+                case 'saved':
+                    statusElement.textContent = '✓ Auto-save ativo';
+                    statusElement.className = 'text-xs text-green-600';
+                    break;
+                case 'off':
+                    statusElement.textContent = '⚠️ Auto-save desativado';
+                    statusElement.className = 'text-xs text-red-600';
+                    break;
+            }
+        }
+
+        function toggleAutoSave() {
+            autoSaveEnabled = !autoSaveEnabled;
+            const toggleButton = document.getElementById('autoSaveToggle');
+            
+            if (autoSaveEnabled) {
+                toggleButton.textContent = 'ON';
+                toggleButton.className = 'text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200';
+                updateAutoSaveStatus('saved');
+                showToast('Auto-save ativado', 'success');
+            } else {
+                toggleButton.textContent = 'OFF';
+                toggleButton.className = 'text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200';
+                updateAutoSaveStatus('off');
+                showToast('Auto-save desativado', 'warning');
+            }
+        }
+
+        function renameProject() {
+            if (!currentProject) return;
+
+            const newName = prompt('Digite o novo nome do projeto:', currentProject.name);
+            if (!newName || newName === currentProject.name) return;
+
+            const projects = getAllProjects();
+            const projectIndex = projects.findIndex(p => p.id === currentProject.id);
+            
+            if (projectIndex === -1) return;
+
+            projects[projectIndex].name = newName;
+            projects[projectIndex].updatedAt = new Date().toISOString();
+            saveProjectsList(projects);
+
+            currentProject.name = newName;
+            document.getElementById('currentProjectName').textContent = newName;
+            
+            showToast(`Projeto renomeado para "${newName}"`, 'success');
+        }
+
+        function deleteProject(projectId) {
+            const projects = getAllProjects();
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) return;
+
+            if (!confirm(`Tem certeza que deseja excluir o projeto "${project.name}"?\n\nEsta ação não pode ser desfeita!`)) {
+                return;
+            }
+
+            const filteredProjects = projects.filter(p => p.id !== projectId);
+            saveProjectsList(filteredProjects);
+
+            // If deleting current project, reset app
+            if (currentProject && currentProject.id === projectId) {
+                currentProject = null;
+                studies = [];
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('uploadArea').classList.remove('hidden');
+            }
+
+            updateProjectsList();
+            showToast('Projeto excluído com sucesso', 'success');
+        }
+
+        function exportProject(projectId) {
+            const projects = getAllProjects();
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                alert('Projeto não encontrado!');
+                return;
+            }
+
+            const exportData = {
+                projectName: project.name,
+                projectId: project.id,
+                createdAt: project.createdAt,
+                updatedAt: project.updatedAt,
+                exportedAt: new Date().toISOString(),
+                version: '2.0',
+                studies: project.studies,
+                keywords: project.keywords,
+                stats: {
+                    total: project.studies.length,
+                    included: project.studies.filter(s => s.included).length,
+                    excluded: project.studies.filter(s => s.excluded).length,
+                    pending: project.studies.filter(s => !s.included && !s.excluded).length
+                }
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${project.name.replace(/[^a-z0-9]/gi, '_')}_COMPLETO_${Date.now()}.json`;
+            link.click();
+
+            showToast('Projeto exportado com sucesso!', 'success');
+        }
+
+        function importProjectFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const importedData = JSON.parse(event.target.result);
+                        
+                        // Validate data
+                        if (!importedData.projectName || !importedData.studies) {
+                            alert('Arquivo de projeto inválido!');
+                            return;
+                        }
+
+                        // Create new project from import
+                        const projectId = generateProjectId();
+                        const projects = getAllProjects();
+                        
+                        const newProject = {
+                            id: projectId,
+                            name: importedData.projectName + ' (Importado)',
+                            createdAt: importedData.createdAt || new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                            studies: importedData.studies,
+                            keywords: importedData.keywords || keywords
+                        };
+
+                        projects.push(newProject);
+                        saveProjectsList(projects);
+                        
+                        updateProjectsList();
+                        showToast(`Projeto "${newProject.name}" importado com sucesso!`, 'success');
+                    } catch (error) {
+                        alert('Erro ao importar projeto: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function showProjectsModal() {
+            updateProjectsList();
+            document.getElementById('projectsModal').style.display = 'block';
+        }
+
+        function closeProjectsModal() {
+            document.getElementById('projectsModal').style.display = 'none';
+        }
+
+        function updateProjectsList() {
+            const projects = getAllProjects();
+            const listDiv = document.getElementById('projectsList');
+            
+            if (projects.length === 0) {
+                listDiv.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <p class="mb-2">Nenhum projeto salvo ainda</p>
+                        <p class="text-sm">Crie um novo projeto ou importe dados para começar</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by last updated
+            projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+            listDiv.innerHTML = '';
+
+            projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = `border rounded-lg p-4 hover:bg-gray-50 transition ${currentProject && currentProject.id === project.id ? 'bg-blue-50 border-blue-500' : ''}`;
+                
+                const updatedDate = new Date(project.updatedAt).toLocaleString('pt-BR');
+                const studiesCount = project.studies ? project.studies.length : 0;
+                const includedCount = project.studies ? project.studies.filter(s => s.included).length : 0;
+                const excludedCount = project.studies ? project.studies.filter(s => s.excluded).length : 0;
+
+                projectCard.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-lg mb-1">${project.name}</h4>
+                            <p class="text-xs text-gray-500 mb-2">Atualizado: ${updatedDate}</p>
+                            <div class="flex gap-3 text-sm">
+                                <span class="text-gray-600">📊 ${studiesCount} estudos</span>
+                                <span class="text-green-600">✓ ${includedCount} incluídos</span>
+                                <span class="text-red-600">✗ ${excludedCount} excluídos</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            ${currentProject && currentProject.id === project.id ? 
+                                '<span class="text-xs bg-blue-500 text-white px-2 py-1 rounded">Atual</span>' : 
+                                `<button onclick="loadProject('${project.id}')" class="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600">Abrir</button>`
+                            }
+                            <button onclick="exportProject('${project.id}')" class="text-xs bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600" title="Exportar projeto">💾</button>
+                            <button onclick="deleteProject('${project.id}')" class="text-xs bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600" title="Excluir projeto">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                
+                listDiv.appendChild(projectCard);
+            });
+
+            // Add import button at the end
+            const importCard = document.createElement('div');
+            importCard.className = 'border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition cursor-pointer';
+            importCard.onclick = importProjectFile;
+            importCard.innerHTML = `
+                <p class="text-gray-600 mb-2">📥 Importar Projeto</p>
+                <p class="text-xs text-gray-500">Clique para importar um arquivo de projeto (.json)</p>
+            `;
+            listDiv.appendChild(importCard);
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white z-50 transition-opacity`;
+            
+            switch(type) {
+                case 'success':
+                    toast.className += ' bg-green-500';
+                    break;
+                case 'error':
+                    toast.className += ' bg-red-500';
+                    break;
+                case 'warning':
+                    toast.className += ' bg-yellow-500';
+                    break;
+                default:
+                    toast.className += ' bg-blue-500';
+            }
+            
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==================== ADVANCED SEARCH SYSTEM ====================
+
+        function toggleSearchHelp() {
+            const helpDiv = document.getElementById('searchHelp');
+            helpDiv.classList.toggle('hidden');
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            if (document.getElementById('searchInputScreening')) {
+                document.getElementById('searchInputScreening').value = '';
+            }
+            currentSearchQuery = '';
+            searchFilteredStudies = [];
+            applyFilters();
+        }
+
+        function performAdvancedSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchInputScreening = document.getElementById('searchInputScreening');
+            
+            // Get query from whichever view is active
+            let query = '';
+            if (currentView === 'spreadsheet' && searchInput) {
+                query = searchInput.value.trim();
+            } else if (currentView === 'screening' && searchInputScreening) {
+                query = searchInputScreening.value.trim();
+                // Sync to spreadsheet input
+                if (searchInput) searchInput.value = query;
+            }
+
+            currentSearchQuery = query;
+
+            if (!query) {
+                clearSearch();
+                return;
+            }
+
+            // Parse and execute search
+            searchFilteredStudies = studies.filter(study => matchStudyWithQuery(study, query));
+
+            // Apply filters (will use searchFilteredStudies)
+            applyFilters();
+        }
+
+        function matchStudyWithQuery(study, query) {
+            try {
+                // Parse the query into tokens
+                const tokens = tokenizeQuery(query);
+                // Evaluate the boolean expression
+                return evaluateQuery(study, tokens);
+            } catch (error) {
+                console.error('Search error:', error);
+                return true; // On error, include all
+            }
+        }
+
+        function tokenizeQuery(query) {
+            // Tokenize the query string
+            const tokens = [];
+            let current = '';
+            let inQuotes = false;
+            let i = 0;
+
+            while (i < query.length) {
+                const char = query[i];
+                
+                if (char === '"') {
+                    if (inQuotes) {
+                        tokens.push({ type: 'PHRASE', value: current });
+                        current = '';
+                        inQuotes = false;
+                    } else {
+                        if (current.trim()) {
+                            tokens.push(...parseWord(current.trim()));
+                        }
+                        current = '';
+                        inQuotes = true;
+                    }
+                } else if (inQuotes) {
+                    current += char;
+                } else if (char === '(' || char === ')') {
+                    if (current.trim()) {
+                        tokens.push(...parseWord(current.trim()));
+                        current = '';
+                    }
+                    tokens.push({ type: char === '(' ? 'LPAREN' : 'RPAREN' });
+                } else if (char === ' ') {
+                    if (current.trim()) {
+                        tokens.push(...parseWord(current.trim()));
+                        current = '';
+                    }
+                } else {
+                    current += char;
+                }
+                
+                i++;
+            }
+
+            if (current.trim()) {
+                if (inQuotes) {
+                    tokens.push({ type: 'PHRASE', value: current });
+                } else {
+                    tokens.push(...parseWord(current.trim()));
+                }
+            }
+
+            return tokens;
+        }
+
+        function parseWord(word) {
+            const upper = word.toUpperCase();
+            
+            if (upper === 'AND') return [{ type: 'AND' }];
+            if (upper === 'OR') return [{ type: 'OR' }];
+            if (upper === 'NOT') return [{ type: 'NOT' }];
+            
+            // Check for field-specific search (field:term)
+            const fieldMatch = word.match(/^(\w+):(.+)$/);
+            if (fieldMatch) {
+                return [{ type: 'FIELD', field: fieldMatch[1].toLowerCase(), value: fieldMatch[2] }];
+            }
+            
+            return [{ type: 'TERM', value: word }];
+        }
+
+        function evaluateQuery(study, tokens) {
+            if (tokens.length === 0) return true;
+
+            // Simple recursive descent parser for boolean expressions
+            let pos = 0;
+
+            function parseExpression() {
+                let left = parseTerm();
+                
+                while (pos < tokens.length) {
+                    const token = tokens[pos];
+                    
+                    if (token.type === 'OR') {
+                        pos++;
+                        const right = parseTerm();
+                        left = left || right;
+                    } else if (token.type === 'AND') {
+                        pos++;
+                        const right = parseTerm();
+                        left = left && right;
+                    } else {
+                        break;
+                    }
+                }
+                
+                return left;
+            }
+
+            function parseTerm() {
+                const token = tokens[pos];
+                
+                if (!token) return true;
+
+                if (token.type === 'NOT') {
+                    pos++;
+                    return !parseTerm();
+                }
+
+                if (token.type === 'LPAREN') {
+                    pos++;
+                    const result = parseExpression();
+                    if (tokens[pos] && tokens[pos].type === 'RPAREN') {
+                        pos++;
+                    }
+                    return result;
+                }
+
+                if (token.type === 'RPAREN') {
+                    return true;
+                }
+
+                if (token.type === 'TERM') {
+                    pos++;
+                    return matchTerm(study, token.value);
+                }
+
+                if (token.type === 'PHRASE') {
+                    pos++;
+                    return matchPhrase(study, token.value);
+                }
+
+                if (token.type === 'FIELD') {
+                    pos++;
+                    return matchField(study, token.field, token.value);
+                }
+
+                pos++;
+                return true;
+            }
+
+            return parseExpression();
+        }
+
+        function matchTerm(study, term) {
+            // Wildcard support (asterisk)
+            const pattern = term.replace(/\*/g, '.*');
+            const regex = new RegExp(pattern, 'i');
+
+            // Search in all fields
+            const searchableText = [
+                study.title,
+                study.authors.join(' '),
+                study.year.toString(),
+                study.abstract || '',
+                study.observations || '',
+                study.reasonExclusion || ''
+            ].join(' ').toLowerCase();
+
+            return regex.test(searchableText);
+        }
+
+        function matchPhrase(study, phrase) {
+            const searchableText = [
+                study.title,
+                study.authors.join(' '),
+                study.abstract || '',
+                study.observations || ''
+            ].join(' ').toLowerCase();
+
+            return searchableText.includes(phrase.toLowerCase());
+        }
+
+        function matchField(study, field, value) {
+            const pattern = value.replace(/\*/g, '.*');
+            const regex = new RegExp(pattern, 'i');
+
+            switch(field) {
+                case 'title':
+                    return regex.test(study.title);
+                case 'author':
+                case 'authors':
+                    return regex.test(study.authors.join(' '));
+                case 'year':
+                    return study.year.toString() === value || regex.test(study.year.toString());
+                case 'abstract':
+                    return regex.test(study.abstract || '');
+                case 'observations':
+                case 'obs':
+                    return regex.test(study.observations || '');
+                case 'reason':
+                case 'exclusion':
+                    return regex.test(study.reasonExclusion || '');
+                default:
+                    return matchTerm(study, value);
+            }
+        }
+    </script>
+</body>
+</html>
