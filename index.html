@@ -118,10 +118,17 @@
         }
 
 
-/* Sticky header - SEM LIMITE DE ALTURA */
+/* Sticky header - Limite APENAS horizontal */
 .table-container {
     position: relative;
-    overflow: visible;
+    overflow-x: auto;  /* Scroll horizontal se necessário */
+    overflow-y: visible;  /* Sem limite vertical */
+    width: 100%;
+}
+
+#spreadsheetTable {
+    width: 100%;
+    min-width: 1200px; /* Largura mínima para garantir usabilidade */
 }
 
 #spreadsheetTable thead th {
