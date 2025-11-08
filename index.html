@@ -107,6 +107,42 @@
         .comparison-conflict {
             background-color: #fee2e2;
         }
+        .consensus-include {
+            background-color: #d1fae5 !important;
+            border-left: 5px solid #10b981 !important;
+        }
+        .consensus-exclude {
+            background-color: #fee2e2 !important;
+            border-left: 5px solid #ef4444 !important;
+        }
+        .consensus-conflict {
+            background-color: #fef3c7 !important;
+            border-left: 5px solid #f59e0b !important;
+        }
+        .consensus-pending {
+            background-color: #f3f4f6 !important;
+            border-left: 5px solid #9ca3af !important;
+        }
+        .reviewer-decision-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+        }
+        .reviewer-include {
+            background-color: #86efac;
+            color: #166534;
+        }
+        .reviewer-exclude {
+            background-color: #fca5a5;
+            color: #991b1b;
+        }
+        .reviewer-pending {
+            background-color: #d1d5db;
+            color: #4b5563;
+        }
         table {
             font-size: 14px;
         }
@@ -117,44 +153,41 @@
             max-width: 400px;
         }
 
+        .table-container {
+            position: relative;
+            overflow-x: auto;
+            overflow-y: visible;
+            width: 100%;
+        }
 
-/* Sticky header - Limite APENAS horizontal */
-.table-container {
-    position: relative;
-    overflow-x: auto;  /* Scroll horizontal se necessário */
-    overflow-y: visible;  /* Sem limite vertical */
-    width: 100%;
-}
+        #spreadsheetTable {
+            width: 100%;
+            min-width: 1200px;
+        }
 
-#spreadsheetTable {
-    width: 100%;
-    min-width: 1200px; /* Largura mínima para garantir usabilidade */
-}
+        #spreadsheetTable thead th {
+            position: sticky;
+            top: 0;
+            background-color: #e5e7eb;
+            border-bottom: 2px solid #9ca3af;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+        }
 
-#spreadsheetTable thead th {
-    position: sticky;
-    top: 0;
-    background-color: #e5e7eb;
-    border-bottom: 2px solid #9ca3af;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    z-index: 10;
-}
+        .row-number {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            color: #6b7280;
+            text-align: center;
+            width: 50px;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+        }
 
-/* Row numbers */
-.row-number {
-    background-color: #f3f4f6;
-    font-weight: bold;
-    color: #6b7280;
-    text-align: center;
-    width: 50px;
-    position: sticky;
-    left: 0;
-    z-index: 5;
-}
-
-#spreadsheetTable thead th.row-number {
-    z-index: 15;
-}
+        #spreadsheetTable thead th.row-number {
+            z-index: 15;
+        }
         
         .tooltip {
             position: relative;
@@ -185,13 +218,11 @@
 </head>
 <body class="bg-gray-50">
     <div class="container mx-auto p-6 max-w-7xl">
-        <!-- Header -->
         <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg p-6 mb-6">
             <h1 class="text-3xl font-bold mb-2">Ward Academy - Systematic Review Screening Tool</h1>
             <p class="text-blue-100">Ferramenta completa para triagem de revisões sistemáticas</p>
         </div>
 
-        <!-- File Upload Area -->
         <div id="uploadArea" class="drag-drop-area rounded-lg p-12 text-center mb-6">
             <div class="flex justify-end mb-4">
                 <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm">
@@ -210,9 +241,7 @@
             <p class="text-xs text-gray-500 mt-4">Formatos aceitos: .txt, .ris</p>
         </div>
 
-        <!-- Main App (Hidden initially) -->
         <div id="mainApp" class="hidden">
-            <!-- Stats Dashboard -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div class="stats-card rounded-lg p-4 shadow-lg">
                     <p class="text-sm opacity-90">Total de Estudos</p>
@@ -232,7 +261,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-3">
@@ -266,13 +294,15 @@
                     <button onclick="exportSpreadsheet()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
                         📊 Baixar Planilha Excel
                     </button>
+                    <button id="saveNewReviewerDecisionsBtn" onclick="saveNewReviewerDecisions()" class="hidden bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-teal-700 transition font-semibold">
+                        ✅ Salvar Minhas Decisões
+                    </button>
                     <button onclick="showClaudeCommandModal()" class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-purple-700 transition">
                         🤖 Comando Claude AI
                     </button>
                 </div>
             </div>
 
-            <!-- Tabs -->
             <div class="bg-white rounded-lg shadow-lg mb-6">
                 <div class="flex border-b">
                     <button onclick="switchTab('spreadsheet')" id="tabSpreadsheet" class="tab-button active flex-1 px-6 py-3 font-semibold">
@@ -283,10 +313,8 @@
                     </button>
                 </div>
 
-                <!-- Spreadsheet View -->
                 <div id="spreadsheetView" class="p-6">
                     <div class="mb-4">
-                        <!-- Search and Filters -->
                         <div class="flex gap-3 mb-3">
                             <button onclick="toggleAllAbstracts()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition text-sm">
                                 👁️ Mostrar/Ocultar Abstracts
@@ -297,12 +325,26 @@
                                 <option value="excluded">Apenas Excluídos</option>
                                 <option value="pending">Apenas Pendentes</option>
                             </select>
+                            <select id="comparisonMainFilter" onchange="applyComparisonMainFilter()" class="border rounded px-4 py-2 text-sm hidden">
+                                <option value="comp-all">📋 Todos</option>
+                                <option value="comp-consensus-include">🟢 Consenso Inclusão</option>
+                                <option value="comp-consensus-exclude">🔴 Consenso Exclusão</option>
+                                <option value="comp-conflict">⚠️ Conflitos</option>
+                                <option value="comp-pending">⚪ Com Pendências</option>
+                            </select>
                             <button onclick="toggleSearchHelp()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm">
                                 ❓ Ajuda
                             </button>
+                            <div id="comparisonModeIndicator" class="hidden ml-auto flex gap-2">
+                                <button onclick="showComparisonFiltersInMain()" class="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded hover:from-orange-600 hover:to-red-600 transition text-sm font-semibold">
+                                    🔄 Modo Comparação Ativo
+                                </button>
+                                <button id="toggleReviewersVisibility" onclick="toggleOtherReviewersVisibility()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm font-semibold">
+                                    👁️ Mostrar Decisões dos Outros
+                                </button>
+                            </div>
                         </div>
                         
-                        <!-- Advanced Search -->
                         <div class="mb-3">
                             <div class="flex gap-2">
                                 <input type="text" 
@@ -328,7 +370,6 @@
                                 <p class="mt-2 text-gray-600">Busca em: Título, Autores, Ano, Abstract, Observations</p>
                             </div>
                             
-                            <!-- Results Counter -->
                             <div id="searchResults" class="mt-2 text-sm font-semibold">
                                 <span class="text-gray-700">Resultados: </span>
                                 <span id="searchCount" class="text-blue-600">0 estudos encontrados</span>
@@ -360,13 +401,10 @@
                     </div>
                 </div>
 
-                <!-- Screening View -->
                 <div id="screeningView" class="p-6 hidden">
                     <div class="flex gap-6">
-                        <!-- Study List -->
                         <div class="w-1/3 border-r pr-4">
                             <div class="mb-4">
-                                <!-- Search -->
                                 <input type="text" 
                                     id="searchInputScreening" 
                                     placeholder='🔍 Busca: diabetes AND treatment' 
@@ -378,8 +416,14 @@
                                     <option value="excluded">Apenas Excluídos</option>
                                     <option value="pending">Apenas Pendentes</option>
                                 </select>
+                                <select id="comparisonScreeningFilter" onchange="applyComparisonMainFilter()" class="w-full border rounded px-4 py-2 text-sm mb-2 hidden">
+                                    <option value="comp-all">📋 Todos</option>
+                                    <option value="comp-consensus-include">🟢 Consenso Inclusão</option>
+                                    <option value="comp-consensus-exclude">🔴 Consenso Exclusão</option>
+                                    <option value="comp-conflict">⚠️ Conflitos</option>
+                                    <option value="comp-pending">⚪ Com Pendências</option>
+                                </select>
                                 
-                                <!-- Results Counter for Screening -->
                                 <div class="text-sm font-semibold mb-2">
                                     <span class="text-gray-700">Resultados: </span>
                                     <span id="searchCountScreening" class="text-blue-600">0 estudos</span>
@@ -389,7 +433,6 @@
                             </div>
                         </div>
 
-                        <!-- Study Details -->
                         <div class="w-2/3">
                             <div id="studyDetails" class="text-gray-500 text-center py-12">
                                 Selecione um ou mais estudos para revisar
@@ -400,7 +443,6 @@
             </div>
         </div>
 
-        <!-- Keywords Modal -->
         <div id="keywordsModal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeKeywordsModal()">&times;</span>
@@ -430,26 +472,165 @@
             </div>
         </div>
 
-        <!-- Compare Modal -->
         <div id="compareModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 1200px;">
                 <span class="close" onclick="closeCompareModal()">&times;</span>
-                <h2 class="text-2xl font-bold mb-6">Comparar Decisões de Revisores</h2>
+                <h2 class="text-2xl font-bold mb-6">🔄 Comparar Decisões de Revisores</h2>
                 
                 <div class="mb-4">
                     <p class="text-sm text-gray-600 mb-3">Selecione 2 ou mais arquivos de decisões para comparar:</p>
-                    <input type="file" id="compareFiles" accept=".json,.xlsx" multiple class="w-full border rounded p-2">
+                    <input type="file" id="compareFiles" accept=".json" multiple class="w-full border rounded p-2 mb-3">
+
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-3">
+                        <label class="block font-semibold mb-2 text-sm">👤 Seu Nome (Novo Revisor):</label>
+                        <input type="text" id="newReviewerNameInput" placeholder="Digite seu nome para iniciar a triagem..." class="w-full border rounded px-4 py-2 mb-2">
+                        <p class="text-xs text-gray-600">💡 Você poderá revisar os artigos e dar sua opinião após carregar os arquivos dos outros revisores</p>
+                    </div>
+
+                    <button onclick="compareReviewers()" class="w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition font-semibold">
+                        🔍 Iniciar Sessão de Comparação
+                    </button>
                 </div>
 
-                <button onclick="compareReviewers()" class="w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition font-semibold">
-                    Comparar Revisores
-                </button>
+                <div id="comparisonResults" class="mt-6 hidden">
+                    <!-- Summary Stats -->
+                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg mb-6">
+                        <h3 class="font-bold text-xl mb-4">📊 Resumo da Comparação</h3>
+                        <div id="comparisonSummary"></div>
+                    </div>
 
-                <div id="comparisonResults" class="mt-6"></div>
+                    <!-- Filters and Export Controls -->
+                    <div class="bg-white border-2 border-blue-200 rounded-lg p-6 mb-6">
+                        <h3 class="font-bold text-lg mb-4">🎯 Filtros e Exportação</h3>
+                        
+                        <!-- Comparison Filters -->
+                        <div class="mb-4">
+                            <label class="block font-semibold mb-2 text-sm">Filtrar por tipo de concordância:</label>
+                            <select id="comparisonFilterSelect" onchange="applyComparisonFilter()" class="w-full border rounded px-4 py-2">
+                                <option value="all">📋 Todos os estudos</option>
+                                <option value="full-agreement">✅ Concordância Total (todos concordam)</option>
+                                <option value="full-include">🟢 Todos concordam em INCLUIR</option>
+                                <option value="full-exclude">🔴 Todos concordam em EXCLUIR</option>
+                                <option value="conflicts">⚠️ Discordâncias (conflitos)</option>
+                                <option value="majority-include">📈 Maioria vota INCLUIR</option>
+                                <option value="majority-exclude">📉 Maioria vota EXCLUIR</option>
+                                <option value="with-pending">⚪ Artigos com pendências</option>
+                            </select>
+                        </div>
+
+                        <!-- Individual Reviewer Filters -->
+                        <div class="mb-4" id="individualReviewerFilters">
+                            <label class="block font-semibold mb-2 text-sm">Filtrar por revisor específico:</label>
+                            <div class="grid grid-cols-1 gap-2" id="reviewerFilterOptions">
+                                <!-- Will be populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Reviewer Selection for Export -->
+                        <div class="mb-4">
+                            <label class="block font-semibold mb-2 text-sm">Selecione revisores para análise específica:</label>
+                            <div id="reviewerCheckboxes" class="grid grid-cols-2 gap-2 mb-3">
+                                <!-- Checkboxes will be dynamically inserted -->
+                            </div>
+                            <button onclick="applyReviewerSelection()" class="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600">
+                                🔄 Aplicar Seleção
+                            </button>
+                        </div>
+
+                        <!-- Export Buttons -->
+                        <div class="border-t pt-4 mt-4">
+                            <label class="block font-semibold mb-3 text-sm">💾 Exportar Planilha Filtrada:</label>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button onclick="exportComparisonSpreadsheet('current-filter')" class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">
+                                    📊 Exportar Filtro Atual
+                                </button>
+                                <button onclick="exportComparisonSpreadsheet('selected-reviewers')" class="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700">
+                                    👥 Exportar Revisores Selecionados
+                                </button>
+                                <button onclick="exportComparisonSpreadsheet('consensus')" class="bg-purple-600 text-white px-4 py-2 rounded text-sm hover:bg-purple-700">
+                                    🤝 Exportar Consenso Total
+                                </button>
+                                <button onclick="exportComparisonSpreadsheet('conflicts-only')" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700">
+                                    ⚠️ Exportar Apenas Conflitos
+                                </button>
+                            </div>
+                            <button onclick="showAdvancedExportModal()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded text-sm hover:from-blue-700 hover:to-indigo-700 font-semibold">
+                                ⚙️ Exportação Avançada (Selecionar Revisores e Critérios)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Comparison Table -->
+                    <div class="bg-white rounded-lg border">
+                        <div class="p-4 bg-gray-50 border-b">
+                            <h3 class="font-bold text-lg">📋 Análise Detalhada</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Mostrando <span id="filteredStudiesCount" class="font-bold text-blue-600">0</span> estudos
+                            </p>
+                        </div>
+                        <div id="detailedComparisonTable" class="max-h-[500px] overflow-y-auto">
+                            <!-- Detailed comparison will be rendered here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Claude Command Modal -->
+        <div id="advancedExportModal" class="modal">
+            <div class="modal-content" style="max-width: 800px;">
+                <span class="close" onclick="closeAdvancedExportModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-6">⚙️ Exportação Avançada</h2>
+
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-gray-700">
+                        <strong>💡 Como funciona:</strong> Selecione os revisores e o tipo de consenso que você deseja exportar.
+                        Por exemplo, você pode exportar apenas os artigos onde os Revisores 1 e 2 concordam em incluir.
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-semibold mb-3 text-sm">👥 Selecione os Revisores:</label>
+                    <div id="advancedExportReviewersList" class="grid grid-cols-2 gap-2 mb-3">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-semibold mb-3 text-sm">📋 Tipo de Consenso:</label>
+                    <select id="advancedExportConsensusType" class="w-full border rounded px-4 py-2">
+                        <option value="all-agree-include">✅ Todos os selecionados concordam em INCLUIR</option>
+                        <option value="all-agree-exclude">❌ Todos os selecionados concordam em EXCLUIR</option>
+                        <option value="all-agree-any">🤝 Todos os selecionados concordam (incluir OU excluir)</option>
+                        <option value="any-include">✅ Pelo menos um selecionado incluiu</option>
+                        <option value="any-exclude">❌ Pelo menos um selecionado excluiu</option>
+                        <option value="majority-include">📊 Maioria dos selecionados incluiu</option>
+                        <option value="majority-exclude">📊 Maioria dos selecionados excluiu</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-semibold mb-2 text-sm">💾 Nome do Arquivo (Opcional):</label>
+                    <input type="text" id="advancedExportFilename" placeholder="Deixe em branco para nome automático" class="w-full border rounded px-4 py-2">
+                </div>
+
+                <div class="bg-gray-50 border rounded-lg p-4 mb-4">
+                    <p class="text-sm text-gray-700">
+                        <strong>📊 Preview:</strong>
+                        <span id="advancedExportPreview" class="text-blue-600 font-semibold">Selecione os critérios acima</span>
+                    </p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="executeAdvancedExport()" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold">
+                        💾 Exportar Planilha
+                    </button>
+                    <button onclick="closeAdvancedExportModal()" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="claudeCommandModal" class="modal">
             <div class="modal-content" style="max-width: 900px;">
                 <span class="close" onclick="closeClaudeCommandModal()">&times;</span>
@@ -478,7 +659,6 @@
                         </div>
                     </div>
                     <div id="picoFieldsContainer">
-                        <!-- Dynamic PICO fields will be inserted here -->
                     </div>
                 </div>
 
@@ -498,7 +678,6 @@
             </div>
         </div>
 
-        <!-- Claude Response Parser Modal -->
         <div id="claudeResponseModal" class="modal">
             <div class="modal-content" style="max-width: 1000px;">
                 <span class="close" onclick="closeClaudeResponseModal()">&times;</span>
@@ -564,7 +743,6 @@
             </div>
         </div>
 
-        <!-- Projects Management Modal -->
         <div id="projectsModal" class="modal">
             <div class="modal-content" style="max-width: 900px;">
                 <span class="close" onclick="closeProjectsModal()">&times;</span>
@@ -586,7 +764,6 @@
                 <div class="mb-4">
                     <h3 class="font-semibold text-lg mb-3">Projetos Salvos:</h3>
                     <div id="projectsList" class="space-y-2 max-h-96 overflow-y-auto">
-                        <!-- Projects will be listed here -->
                     </div>
                 </div>
 
@@ -601,7 +778,6 @@
     </div>
 
     <script>
-        // Global Variables
         let studies = [];
         let currentView = 'spreadsheet';
         let selectedStudies = new Set();
@@ -613,13 +789,18 @@
         let showAbstracts = true;
         let comparisonMode = false;
         let comparisonData = null;
+        let reviewersData = [];
+        let comparisonFilter = 'all';
+        let selectedReviewersForExport = [];
+        let newReviewerName = '';
+        let showOtherReviewersDecisions = true;
+        let newReviewerDecisions = {};
         let currentProject = null;
         let autoSaveEnabled = true;
         let autoSaveTimer = null;
         let currentSearchQuery = '';
         let searchFilteredStudies = [];
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
             document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -679,7 +860,6 @@
         }
 
         function parseRISFile(content) {
-            // Ask for project name if no current project
             if (!currentProject) {
                 const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
                 if (!projectName) {
@@ -752,7 +932,6 @@
                     authors = [];
                     currentField = '';
                 } else if (line.length > 0 && !line.includes('  -') && currentField) {
-                    // Continuation of previous field
                     if (currentField === 'title') {
                         currentStudy.title += ' ' + line;
                     } else if (currentField === 'abstract') {
@@ -770,7 +949,6 @@
                 updateRangeInfo();
                 updateResultsCounter();
 
-                // Save project
                 const projects = getAllProjects();
                 const existingIndex = projects.findIndex(p => p.id === currentProject.id);
                 
@@ -800,13 +978,11 @@
             const filtered = getFilteredStudies();
             const count = filtered.length;
             
-            // Update spreadsheet view counter
             const countSpan = document.getElementById('searchCount');
             if (countSpan) {
                 countSpan.textContent = `${count} estudos encontrados`;
             }
             
-            // Update screening view counter
             const countSpanScreening = document.getElementById('searchCountScreening');
             if (countSpanScreening) {
                 countSpanScreening.textContent = `${count} estudos`;
@@ -834,21 +1010,18 @@
             
             let highlightedText = text;
             
-            // Apply include keywords (green)
             keywords.include.forEach(keyword => {
                 const pattern = keyword.replace('*', '\\w*');
                 const regex = new RegExp(`(${pattern})`, 'gi');
                 highlightedText = highlightedText.replace(regex, '<span class="highlight-include">$1</span>');
             });
             
-            // Apply exclude keywords (red)
             keywords.exclude.forEach(keyword => {
                 const pattern = keyword.replace('*', '\\w*');
                 const regex = new RegExp(`(${pattern})`, 'gi');
                 highlightedText = highlightedText.replace(regex, '<span class="highlight-exclude">$1</span>');
             });
             
-            // Apply methods keywords (yellow)
             keywords.methods.forEach(keyword => {
                 const pattern = keyword.replace('*', '\\w*');
                 const regex = new RegExp(`(${pattern})`, 'gi');
@@ -856,6 +1029,21 @@
             });
             
             return highlightedText;
+        }
+
+        function showComparisonFiltersInMain() {
+            showCompareModal();
+        }
+
+        function updateComparisonModeIndicator() {
+            const indicator = document.getElementById('comparisonModeIndicator');
+            if (indicator) {
+                if (comparisonMode && reviewersData.length > 0) {
+                    indicator.classList.remove('hidden');
+                } else {
+                    indicator.classList.add('hidden');
+                }
+            }
         }
 
         function renderSpreadsheet() {
@@ -866,7 +1054,10 @@
 
             filteredStudies.forEach((study, index) => {
                 const row = document.createElement('tr');
-                row.className = comparisonMode ? getComparisonClass(study) : '';
+
+                // Apply comparison styling if in comparison mode
+                let rowClass = getConsensusClass(study);
+                row.className = rowClass;
                 
                 const authorText = study.authors && study.authors.length > 0 
                     ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
@@ -875,9 +1066,43 @@
                     ? `${authorText}, ${study.year}`
                     : study.id;
 
+                // Add comparison info badge if in comparison mode
+                let comparisonBadge = '';
+                if (comparisonMode && comparisonData && showOtherReviewersDecisions) {
+                    const consensusInfo = getConsensusInfo(study);
+                    if (consensusInfo) {
+                        if (consensusInfo.allIncluded) {
+                            comparisonBadge = `<span class="text-xs bg-green-500 text-white px-2 py-1 rounded ml-2">✅ ${consensusInfo.includeCount} Incluem</span>`;
+                        } else if (consensusInfo.allExcluded) {
+                            comparisonBadge = `<span class="text-xs bg-red-500 text-white px-2 py-1 rounded ml-2">❌ ${consensusInfo.excludeCount} Excluem</span>`;
+                        } else if (consensusInfo.hasConflict) {
+                            comparisonBadge = `<span class="text-xs bg-yellow-500 text-white px-2 py-1 rounded ml-2">⚠ ${consensusInfo.includeCount}✓ ${consensusInfo.excludeCount}✗ ${consensusInfo.pendingCount}⚪</span>`;
+                        } else if (consensusInfo.pendingCount > 0) {
+                            comparisonBadge = `<span class="text-xs bg-gray-400 text-white px-2 py-1 rounded ml-2">⚪ ${consensusInfo.pendingCount} Pendentes</span>`;
+                        }
+
+                        // Adiciona detalhes dos revisores individuais
+                        if (showOtherReviewersDecisions) {
+                            const reviewerBadges = consensusInfo.decisions.map(d => {
+                                let badgeClass = 'reviewer-pending';
+                                let icon = '⚪';
+                                if (d.included) {
+                                    badgeClass = 'reviewer-include';
+                                    icon = '✅';
+                                } else if (d.excluded) {
+                                    badgeClass = 'reviewer-exclude';
+                                    icon = '❌';
+                                }
+                                return `<span class="reviewer-decision-badge ${badgeClass}" title="${d.reviewer}">${icon} ${d.reviewer}</span>`;
+                            }).join('');
+                            comparisonBadge += `<div class="mt-1">${reviewerBadges}</div>`;
+                        }
+                    }
+                }
+
                 row.innerHTML = `
                     <td class="border p-2 row-number text-sm">${index + 1}</td>
-                    <td class="border p-2 text-sm">${studyId}</td>
+                    <td class="border p-2 text-sm">${studyId}${comparisonBadge}</td>
                     <td class="border p-2 text-sm">
                         ${study.doi ? `<a href="https://doi.org/${study.doi}" target="_blank" class="text-blue-600 hover:underline">🔗 ${study.doi}</a>` : '-'}
                     </td>
@@ -914,6 +1139,8 @@
                 `;
                 tbody.appendChild(row);
             });
+
+            updateComparisonModeIndicator();
         }
 
         function renderScreeningList() {
@@ -924,11 +1151,53 @@
 
             filteredStudies.forEach((study, index) => {
                 const card = document.createElement('div');
-                card.className = `study-card p-4 border rounded-lg cursor-pointer ${selectedStudies.has(study.id) ? 'bg-blue-50 border-blue-500' : 'bg-white hover:bg-gray-50'}`;
+
+                // Apply comparison styling with new consensus classes
+                let cardClass = `study-card p-4 border-2 rounded-lg cursor-pointer ${selectedStudies.has(study.id) ? 'bg-blue-50 border-blue-500' : 'bg-white hover:bg-gray-50'}`;
+
+                // Adiciona classe de consenso
+                const consensusClass = getConsensusClass(study);
+                if (consensusClass) {
+                    cardClass += ` ${consensusClass}`;
+                }
+
+                card.className = cardClass;
                 card.onclick = () => toggleStudySelection(study.id);
 
                 const badge = study.included ? 'badge-included' : (study.excluded ? 'badge-excluded' : 'badge-pending');
                 const badgeText = study.included ? 'Incluído' : (study.excluded ? 'Excluído' : 'Pendente');
+
+                // Add comparison badge if in comparison mode
+                let comparisonInfo = '';
+                if (comparisonMode && comparisonData && showOtherReviewersDecisions) {
+                    const consensusInfo = getConsensusInfo(study);
+                    if (consensusInfo) {
+                        if (consensusInfo.allIncluded) {
+                            comparisonInfo = `<span class="text-xs bg-green-500 text-white px-2 py-1 rounded mt-2 inline-block">✅ ${consensusInfo.includeCount} Incluem</span>`;
+                        } else if (consensusInfo.allExcluded) {
+                            comparisonInfo = `<span class="text-xs bg-red-500 text-white px-2 py-1 rounded mt-2 inline-block">❌ ${consensusInfo.excludeCount} Excluem</span>`;
+                        } else if (consensusInfo.hasConflict) {
+                            comparisonInfo = `<span class="text-xs bg-yellow-500 text-white px-2 py-1 rounded mt-2 inline-block">⚠ ${consensusInfo.includeCount}✓ ${consensusInfo.excludeCount}✗ ${consensusInfo.pendingCount}⚪</span>`;
+                        } else if (consensusInfo.pendingCount > 0) {
+                            comparisonInfo = `<span class="text-xs bg-gray-400 text-white px-2 py-1 rounded mt-2 inline-block">⚪ ${consensusInfo.pendingCount} Pendentes</span>`;
+                        }
+
+                        // Adiciona badges dos revisores individuais
+                        const reviewerBadges = consensusInfo.decisions.map(d => {
+                            let badgeClass = 'reviewer-pending';
+                            let icon = '⚪';
+                            if (d.included) {
+                                badgeClass = 'reviewer-include';
+                                icon = '✅';
+                            } else if (d.excluded) {
+                                badgeClass = 'reviewer-exclude';
+                                icon = '❌';
+                            }
+                            return `<span class="reviewer-decision-badge ${badgeClass}" title="${d.reviewer}">${icon} ${d.reviewer}</span>`;
+                        }).join('');
+                        comparisonInfo += `<div class="mt-2">${reviewerBadges}</div>`;
+                    }
+                }
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
@@ -937,6 +1206,7 @@
                     </div>
                     <h3 class="font-semibold text-sm mb-1">${study.title.substring(0, 80)}...</h3>
                     <p class="text-xs text-gray-600">${study.authors[0] || ''} ${study.year}</p>
+                    ${comparisonInfo}
                 `;
                 listDiv.appendChild(card);
             });
@@ -1070,16 +1340,15 @@
         }
 
         function getFilteredStudies() {
-            const filterSelect = currentView === 'spreadsheet' 
+            const filterSelect = currentView === 'spreadsheet'
                 ? document.getElementById('filterSpreadsheet')
                 : document.getElementById('filterScreening');
-            
+
             if (!filterSelect) return studies;
-            
+
             const filter = filterSelect.value;
             let filtered = studies;
 
-            // Apply status filter first
             if (filter === 'included') {
                 filtered = studies.filter(s => s.included);
             } else if (filter === 'excluded') {
@@ -1088,13 +1357,47 @@
                 filtered = studies.filter(s => !s.included && !s.excluded);
             }
 
-            // Apply search filter if active
+            // Aplica filtros de comparação se estiver em modo comparação
+            if (comparisonMode && comparisonData) {
+                const compFilterSelect = currentView === 'spreadsheet'
+                    ? document.getElementById('comparisonMainFilter')
+                    : document.getElementById('comparisonScreeningFilter');
+
+                if (compFilterSelect && compFilterSelect.value !== 'comp-all') {
+                    const compFilter = compFilterSelect.value;
+                    const compIds = new Set();
+
+                    comparisonData.forEach(comp => {
+                        let matches = false;
+                        if (compFilter === 'comp-consensus-include' && comp.allIncluded) {
+                            matches = true;
+                        } else if (compFilter === 'comp-consensus-exclude' && comp.allExcluded) {
+                            matches = true;
+                        } else if (compFilter === 'comp-conflict' && comp.hasConflict) {
+                            matches = true;
+                        } else if (compFilter === 'comp-pending' && comp.pendingCount > 0) {
+                            matches = true;
+                        }
+
+                        if (matches) {
+                            compIds.add(comp.study.id);
+                        }
+                    });
+
+                    filtered = filtered.filter(s => compIds.has(s.id));
+                }
+            }
+
             if (currentSearchQuery && searchFilteredStudies.length >= 0) {
                 const searchIds = new Set(searchFilteredStudies.map(s => s.id));
                 filtered = filtered.filter(s => searchIds.has(s.id));
             }
 
             return filtered;
+        }
+
+        function applyComparisonMainFilter() {
+            applyFilters();
         }
 
         function applyFilters() {
@@ -1108,7 +1411,6 @@
             updateResultsCounter();
         }
 
-        // Keywords Modal
         function showKeywordsModal() {
             document.getElementById('includeKeywords').value = keywords.include.join(', ');
             document.getElementById('excludeKeywords').value = keywords.exclude.join(', ');
@@ -1142,7 +1444,6 @@
             autoSave();
         }
 
-        // Export/Import Functions - EXPORTAÇÃO COMPLETA DO PROJETO
         function exportDecisions() {
             if (!currentProject) {
                 alert('Nenhum projeto ativo para exportar!');
@@ -1203,12 +1504,9 @@
                         try {
                             const data = JSON.parse(event.target.result);
                             
-                            // Verificar se é exportação completa ou antiga
                             if (data.version && data.version === '2.0' && data.projectName) {
-                                // Importação completa
                                 importCompleteProject(data);
                             } else {
-                                // Importação antiga (só decisões)
                                 applyImportedDecisions(data.studies || data);
                                 showToast('Decisões importadas com sucesso!', 'success');
                             }
@@ -1250,7 +1548,6 @@
         function importCompleteProject(data) {
             const projectId = generateProjectId();
             
-            // Criar novo projeto com dados importados
             const importedProject = {
                 id: projectId,
                 name: data.projectName + ' (Importado)',
@@ -1260,17 +1557,14 @@
                 keywords: data.keywords || keywords
             };
 
-            // Adicionar à lista de projetos
             const projects = getAllProjects();
             projects.push(importedProject);
             saveProjectsList(projects);
 
-            // Carregar o projeto importado
             currentProject = importedProject;
             studies = data.studies;
             keywords = data.keywords || keywords;
 
-            // Update UI
             document.getElementById('currentProjectName').textContent = importedProject.name;
             document.getElementById('uploadArea').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
@@ -1333,7 +1627,6 @@
             XLSX.writeFile(wb, `systematic_review_${Date.now()}.xlsx`);
         }
 
-        // Compare Reviewers
         function showCompareModal() {
             document.getElementById('compareModal').style.display = 'block';
         }
@@ -1345,10 +1638,18 @@
         function compareReviewers() {
             const filesInput = document.getElementById('compareFiles');
             const files = filesInput.files;
-            
+            const nameInput = document.getElementById('newReviewerNameInput').value.trim();
+
             if (files.length < 2) {
                 alert('Selecione pelo menos 2 arquivos para comparar');
                 return;
+            }
+
+            // Captura o nome do novo revisor (opcional, mas recomendado)
+            if (nameInput) {
+                newReviewerName = nameInput;
+            } else {
+                newReviewerName = 'Novo Revisor';
             }
 
             const promises = Array.from(files).map(file => {
@@ -1358,7 +1659,7 @@
                         try {
                             const data = JSON.parse(e.target.result);
                             resolve({
-                                reviewer: data.reviewer || data.projectName || file.name,
+                                reviewer: data.reviewer || data.projectName || file.name.replace('.json', ''),
                                 studies: data.studies
                             });
                         } catch (error) {
@@ -1369,78 +1670,515 @@
                 });
             });
 
-            Promise.all(promises).then(reviewersData => {
-                displayComparison(reviewersData);
+            Promise.all(promises).then(data => {
+                reviewersData = data;
+
+                // Mescla os studies de todos os revisores e prepara para triagem
+                const allStudyIds = new Set();
+                data.forEach(reviewer => {
+                    reviewer.studies.forEach(study => allStudyIds.add(study.id));
+                });
+
+                // Usa os studies do primeiro revisor como base, mas reseta as decisões
+                studies = data[0].studies.map(study => {
+                    // Cria uma cópia limpa do estudo sem as decisões anteriores
+                    return {
+                        ...study,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: study.observations || ''
+                    };
+                });
+
+                // Inicializa as decisões do novo revisor como vazias
+                newReviewerDecisions = {};
+                studies.forEach(study => {
+                    newReviewerDecisions[study.id] = {
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: ''
+                    };
+                });
+
+                displayEnhancedComparison();
+                comparisonMode = true;
+
+                // Fecha o modal e mostra os controles de comparação
+                closeCompareModal();
+                document.getElementById('comparisonModeIndicator').classList.remove('hidden');
+
+                // Mostra os dropdowns de filtro de comparação
+                document.getElementById('comparisonMainFilter').classList.remove('hidden');
+                document.getElementById('comparisonScreeningFilter').classList.remove('hidden');
+
+                // Mostra o botão para salvar decisões do novo revisor
+                document.getElementById('saveNewReviewerDecisionsBtn').classList.remove('hidden');
+
+                // Atualiza as visualizações para mostrar os dados de comparação
+                applyFilters();
+
+                alert(`✅ Sessão iniciada! Olá ${newReviewerName}!\n\n📊 ${reviewersData.length} revisores carregados\n📝 ${studies.length} artigos para revisar\n\n💡 Use os modos Planilha ou Triagem para dar sua opinião sobre cada artigo.\n\n✅ Quando terminar, clique em "Salvar Minhas Decisões" para adicionar suas escolhas à comparação.`);
             }).catch(error => {
                 alert('Erro ao carregar arquivos: ' + error.message);
             });
         }
 
-        function displayComparison(reviewersData) {
-            const resultsDiv = document.getElementById('comparisonResults');
-            
-            // Calculate agreements and disagreements
+        function displayEnhancedComparison() {
+            // Calculate comprehensive comparison data
             const studyComparisons = studies.map(study => {
                 const decisions = reviewersData.map(r => {
                     const reviewerStudy = r.studies.find(s => s.id == study.id);
                     return {
                         reviewer: r.reviewer,
                         included: reviewerStudy ? reviewerStudy.included : false,
-                        excluded: reviewerStudy ? reviewerStudy.excluded : false
+                        excluded: reviewerStudy ? reviewerStudy.excluded : false,
+                        reasonExclusion: reviewerStudy ? reviewerStudy.reasonExclusion : ''
                     };
                 });
 
+                const includeCount = decisions.filter(d => d.included).length;
+                const excludeCount = decisions.filter(d => d.excluded).length;
+                const pendingCount = decisions.filter(d => !d.included && !d.excluded).length;
+
                 const allIncluded = decisions.every(d => d.included);
                 const allExcluded = decisions.every(d => d.excluded);
-                const agreement = allIncluded || allExcluded;
+                const fullAgreement = allIncluded || allExcluded;
+                
+                const majorityInclude = includeCount > (decisions.length / 2);
+                const majorityExclude = excludeCount > (decisions.length / 2);
 
                 return {
                     study: study,
                     decisions: decisions,
-                    agreement: agreement,
-                    status: allIncluded ? 'included' : (allExcluded ? 'excluded' : 'conflict')
+                    includeCount: includeCount,
+                    excludeCount: excludeCount,
+                    pendingCount: pendingCount,
+                    fullAgreement: fullAgreement,
+                    hasConflict: !fullAgreement,
+                    allIncluded: allIncluded,
+                    allExcluded: allExcluded,
+                    majorityInclude: majorityInclude,
+                    majorityExclude: majorityExclude,
+                    status: allIncluded ? 'full-include' : (allExcluded ? 'full-exclude' : 'conflict')
                 };
             });
 
-            const agreements = studyComparisons.filter(sc => sc.agreement).length;
-            const disagreements = studyComparisons.filter(sc => !sc.agreement).length;
+            comparisonData = studyComparisons;
 
-            let html = `
-                <div class="bg-blue-50 p-4 rounded-lg mb-4">
-                    <h3 class="font-bold text-lg mb-2">Resumo da Comparação</h3>
-                    <p class="text-sm">Revisores: ${reviewersData.map(r => r.reviewer).join(', ')}</p>
-                    <p class="text-sm">Total de estudos: ${studies.length}</p>
-                    <p class="text-sm text-green-600">✓ Concordâncias: ${agreements}</p>
-                    <p class="text-sm text-red-600">✗ Discordâncias: ${disagreements}</p>
+            // Generate summary
+            displayComparisonSummary(studyComparisons);
+            
+            // Generate reviewer checkboxes
+            generateReviewerCheckboxes();
+            
+            // Apply default filter
+            applyComparisonFilter();
+        }
+
+        function displayComparisonSummary(comparisons) {
+            const fullAgreements = comparisons.filter(c => c.fullAgreement).length;
+            const fullIncludes = comparisons.filter(c => c.allIncluded).length;
+            const fullExcludes = comparisons.filter(c => c.allExcluded).length;
+            const conflicts = comparisons.filter(c => c.hasConflict).length;
+            const majorityIncludes = comparisons.filter(c => c.majorityInclude && !c.fullAgreement).length;
+            const majorityExcludes = comparisons.filter(c => c.majorityExclude && !c.fullAgreement).length;
+            const withPending = comparisons.filter(c => c.pendingCount > 0).length;
+
+            // Calcula estatísticas por revisor
+            const reviewerStats = reviewersData.map(r => {
+                const includedCount = r.studies.filter(s => s.included).length;
+                const excludedCount = r.studies.filter(s => s.excluded).length;
+                const pendingCount = r.studies.filter(s => !s.included && !s.excluded).length;
+                return {
+                    name: r.reviewer,
+                    included: includedCount,
+                    excluded: excludedCount,
+                    pending: pendingCount
+                };
+            });
+
+            const summaryHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow border-2 border-gray-200">
+                        <p class="text-sm text-gray-600 font-semibold">📊 Total de Estudos</p>
+                        <p class="text-4xl font-bold text-gray-800">${studies.length}</p>
+                    </div>
+                    <div class="bg-green-100 p-4 rounded-lg shadow border-2 border-green-300">
+                        <p class="text-sm text-green-700 font-semibold">✅ Concordância Total</p>
+                        <p class="text-4xl font-bold text-green-800">${fullAgreements}</p>
+                        <p class="text-xs text-green-600 mt-1">${((fullAgreements/studies.length)*100).toFixed(1)}% dos estudos</p>
+                    </div>
+                    <div class="bg-emerald-100 p-4 rounded-lg shadow border-2 border-emerald-300">
+                        <p class="text-sm text-emerald-700 font-semibold">🟢 Todos Incluem</p>
+                        <p class="text-4xl font-bold text-emerald-800">${fullIncludes}</p>
+                        <p class="text-xs text-emerald-600 mt-1">${((fullIncludes/studies.length)*100).toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-rose-100 p-4 rounded-lg shadow border-2 border-rose-300">
+                        <p class="text-sm text-rose-700 font-semibold">🔴 Todos Excluem</p>
+                        <p class="text-4xl font-bold text-rose-800">${fullExcludes}</p>
+                        <p class="text-xs text-rose-600 mt-1">${((fullExcludes/studies.length)*100).toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-yellow-100 p-4 rounded-lg shadow border-2 border-yellow-300">
+                        <p class="text-sm text-yellow-700 font-semibold">⚠️ Conflitos</p>
+                        <p class="text-4xl font-bold text-yellow-800">${conflicts}</p>
+                        <p class="text-xs text-yellow-600 mt-1">${((conflicts/studies.length)*100).toFixed(1)}% precisam revisão</p>
+                    </div>
+                    <div class="bg-gray-100 p-4 rounded-lg shadow border-2 border-gray-300">
+                        <p class="text-sm text-gray-700 font-semibold">⚪ Com Pendências</p>
+                        <p class="text-4xl font-bold text-gray-800">${withPending}</p>
+                        <p class="text-xs text-gray-600 mt-1">${((withPending/studies.length)*100).toFixed(1)}%</p>
+                    </div>
+                    <div class="bg-orange-100 p-4 rounded-lg shadow border-2 border-orange-300">
+                        <p class="text-sm text-orange-700 font-semibold">📈 Maioria Inclui</p>
+                        <p class="text-4xl font-bold text-orange-800">${majorityIncludes}</p>
+                    </div>
+                    <div class="bg-red-100 p-4 rounded-lg shadow border-2 border-red-300">
+                        <p class="text-sm text-red-700 font-semibold">📉 Maioria Exclui</p>
+                        <p class="text-4xl font-bold text-red-800">${majorityExcludes}</p>
+                    </div>
                 </div>
 
-                <div class="space-y-3 max-h-96 overflow-y-auto">
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-4">
+                    <h4 class="font-bold text-lg text-blue-800 mb-3">👥 Estatísticas por Revisor</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-${Math.min(reviewerStats.length, 3)} gap-4">
+                        ${reviewerStats.map(stat => `
+                            <div class="bg-white p-3 rounded-lg border">
+                                <p class="font-semibold text-gray-800 mb-2">${stat.name}</p>
+                                <div class="space-y-1 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-green-700">✅ Incluídos:</span>
+                                        <span class="font-bold text-green-800">${stat.included}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-red-700">❌ Excluídos:</span>
+                                        <span class="font-bold text-red-800">${stat.excluded}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-600">⚪ Pendentes:</span>
+                                        <span class="font-bold text-gray-700">${stat.pending}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-700 bg-white p-3 rounded border">
+                    <p><strong>📝 Revisores na Comparação:</strong> ${reviewersData.map(r => r.reviewer).join(', ')}</p>
+                </div>
             `;
 
-            studyComparisons.forEach(sc => {
-                const bgClass = sc.agreement ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300';
-                html += `
-                    <div class="${bgClass} border p-3 rounded">
-                        <h4 class="font-semibold text-sm mb-2">${sc.study.title.substring(0, 100)}...</h4>
-                        <div class="text-xs space-y-1">
-                `;
-                
-                sc.decisions.forEach(d => {
-                    const decisionText = d.included ? '✓ Incluir' : (d.excluded ? '✗ Excluir' : '⚪ Pendente');
-                    html += `<p>${d.reviewer}: ${decisionText}</p>`;
-                });
+            document.getElementById('comparisonSummary').innerHTML = summaryHTML;
+        }
 
+        function generateReviewerCheckboxes() {
+            const container = document.getElementById('reviewerCheckboxes');
+            container.innerHTML = '';
+
+            reviewersData.forEach((reviewer, index) => {
+                const checkbox = document.createElement('div');
+                checkbox.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
+                checkbox.innerHTML = `
+                    <input type="checkbox" 
+                           id="reviewer_${index}" 
+                           value="${index}"
+                           checked
+                           class="reviewer-checkbox">
+                    <label for="reviewer_${index}" class="text-sm cursor-pointer">${reviewer.reviewer}</label>
+                `;
+                container.appendChild(checkbox);
+            });
+
+            // Select all by default
+            selectedReviewersForExport = reviewersData.map((r, i) => i);
+        }
+
+        function applyReviewerSelection() {
+            const checkboxes = document.querySelectorAll('.reviewer-checkbox');
+            selectedReviewersForExport = [];
+            
+            checkboxes.forEach((cb, index) => {
+                if (cb.checked) {
+                    selectedReviewersForExport.push(index);
+                }
+            });
+
+            if (selectedReviewersForExport.length < 1) {
+                alert('Selecione pelo menos 1 revisor!');
+                return;
+            }
+
+            // Recalculate comparison based on selected reviewers
+            const filteredComparisons = comparisonData.map(comp => {
+                const filteredDecisions = comp.decisions.filter((d, i) => 
+                    selectedReviewersForExport.includes(i)
+                );
+
+                const includeCount = filteredDecisions.filter(d => d.included).length;
+                const excludeCount = filteredDecisions.filter(d => d.excluded).length;
+                const allIncluded = filteredDecisions.every(d => d.included);
+                const allExcluded = filteredDecisions.every(d => d.excluded);
+
+                return {
+                    ...comp,
+                    filteredDecisions: filteredDecisions,
+                    filteredIncludeCount: includeCount,
+                    filteredExcludeCount: excludeCount,
+                    filteredFullAgreement: allIncluded || allExcluded,
+                    filteredAllIncluded: allIncluded,
+                    filteredAllExcluded: allExcluded
+                };
+            });
+
+            showToast(`Filtrando por ${selectedReviewersForExport.length} revisor(es) selecionado(s)`, 'info');
+            renderDetailedComparisonTable(filteredComparisons);
+        }
+
+        function applyComparisonFilter() {
+            const filterValue = document.getElementById('comparisonFilterSelect').value;
+            comparisonFilter = filterValue;
+
+            let filteredComparisons = comparisonData;
+
+            switch(filterValue) {
+                case 'full-agreement':
+                    filteredComparisons = comparisonData.filter(c => c.fullAgreement);
+                    break;
+                case 'full-include':
+                    filteredComparisons = comparisonData.filter(c => c.allIncluded);
+                    break;
+                case 'full-exclude':
+                    filteredComparisons = comparisonData.filter(c => c.allExcluded);
+                    break;
+                case 'conflicts':
+                    filteredComparisons = comparisonData.filter(c => c.hasConflict);
+                    break;
+                case 'majority-include':
+                    filteredComparisons = comparisonData.filter(c => c.majorityInclude && !c.fullAgreement);
+                    break;
+                case 'majority-exclude':
+                    filteredComparisons = comparisonData.filter(c => c.majorityExclude && !c.fullAgreement);
+                    break;
+                default:
+                    filteredComparisons = comparisonData;
+            }
+
+            renderDetailedComparisonTable(filteredComparisons);
+            
+            // Update count
+            document.getElementById('filteredStudiesCount').textContent = filteredComparisons.length;
+        }
+
+        function renderDetailedComparisonTable(comparisons) {
+            const container = document.getElementById('detailedComparisonTable');
+            
+            if (comparisons.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-gray-500">
+                        <p class="text-lg">Nenhum estudo encontrado com este filtro.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="divide-y">';
+
+            comparisons.forEach((comp, index) => {
+                const bgClass = comp.fullAgreement ? 'bg-green-50' : 'bg-red-50';
+                
                 html += `
+                    <div class="${bgClass} p-4 hover:bg-opacity-75 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-sm mb-1">${comp.study.title}</h4>
+                                <p class="text-xs text-gray-600">${comp.study.authors[0] || ''} ${comp.study.year}</p>
+                            </div>
+                            <div class="flex gap-2 ml-4">
+                                ${comp.fullAgreement ? 
+                                    '<span class="px-2 py-1 bg-green-500 text-white rounded text-xs">✓ Acordo</span>' : 
+                                    '<span class="px-2 py-1 bg-red-500 text-white rounded text-xs">⚠ Conflito</span>'
+                                }
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-${Math.min(reviewersData.length, 4)} gap-2 mt-3">
+                            ${comp.decisions.map(d => {
+                                const decisionIcon = d.included ? '✅' : (d.excluded ? '❌' : '⚪');
+                                const decisionText = d.included ? 'INCLUIR' : (d.excluded ? 'EXCLUIR' : 'PENDENTE');
+                                const decisionColor = d.included ? 'text-green-700 bg-green-100' : (d.excluded ? 'text-red-700 bg-red-100' : 'text-gray-700 bg-gray-100');
+                                return `
+                                    <div class="${decisionColor} p-2 rounded text-xs">
+                                        <p class="font-semibold">${d.reviewer}</p>
+                                        <p class="mt-1">${decisionIcon} ${decisionText}</p>
+                                        ${d.reasonExclusion ? `<p class="mt-1 text-xs italic">${d.reasonExclusion.substring(0, 50)}...</p>` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div class="mt-2 text-xs text-gray-600">
+                            <span class="font-semibold">Contagem:</span> 
+                            ${comp.includeCount} incluir | ${comp.excludeCount} excluir | ${comp.pendingCount} pendente
                         </div>
                     </div>
                 `;
             });
 
             html += '</div>';
-            resultsDiv.innerHTML = html;
+            container.innerHTML = html;
+        }
 
-            // Store comparison data
-            comparisonData = studyComparisons;
+        function exportComparisonSpreadsheet(exportType) {
+            if (!comparisonData || !reviewersData) {
+                alert('Nenhuma comparação ativa para exportar!');
+                return;
+            }
+
+            let studiesToExport = [];
+            let exportFileName = '';
+
+            switch(exportType) {
+                case 'current-filter':
+                    // Export based on current filter
+                    studiesToExport = getStudiesByComparisonFilter();
+                    const filterNames = {
+                        'all': 'Todos',
+                        'full-agreement': 'Concordancia_Total',
+                        'full-include': 'Todos_Incluem',
+                        'full-exclude': 'Todos_Excluem',
+                        'conflicts': 'Conflitos',
+                        'majority-include': 'Maioria_Inclui',
+                        'majority-exclude': 'Maioria_Exclui'
+                    };
+                    exportFileName = `Comparacao_${filterNames[comparisonFilter]}_${Date.now()}.xlsx`;
+                    break;
+
+                case 'selected-reviewers':
+                    // Export studies where selected reviewers agree
+                    studiesToExport = getStudiesBySelectedReviewers();
+                    exportFileName = `Comparacao_Revisores_Selecionados_${Date.now()}.xlsx`;
+                    break;
+
+                case 'consensus':
+                    // Export only studies where ALL reviewers agree
+                    studiesToExport = comparisonData
+                        .filter(c => c.fullAgreement)
+                        .map(c => c.study);
+                    exportFileName = `Comparacao_Consenso_Total_${Date.now()}.xlsx`;
+                    break;
+
+                case 'conflicts-only':
+                    // Export only conflicted studies
+                    studiesToExport = comparisonData
+                        .filter(c => c.hasConflict)
+                        .map(c => c.study);
+                    exportFileName = `Comparacao_Conflitos_${Date.now()}.xlsx`;
+                    break;
+
+                default:
+                    studiesToExport = studies;
+                    exportFileName = `Comparacao_Export_${Date.now()}.xlsx`;
+            }
+
+            if (studiesToExport.length === 0) {
+                alert('Nenhum estudo encontrado com este critério de exportação!');
+                return;
+            }
+
+            // Create detailed spreadsheet with reviewer decisions
+            const data = studiesToExport.map(study => {
+                const authorText = study.authors && study.authors.length > 0 
+                    ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const studyId = authorText && study.year 
+                    ? `${authorText}, ${study.year}`
+                    : study.id;
+
+                // Get comparison data for this study
+                const compData = comparisonData.find(c => c.study.id === study.id);
+                
+                const baseData = {
+                    'STUDY ID': studyId,
+                    'TITLE': study.title,
+                    'AUTHOR': study.authors.join(', '),
+                    'YEAR': study.year,
+                    'DOI': study.doi || '',
+                    'ABSTRACT': study.abstract || ''
+                };
+
+                // Add each reviewer's decision as columns
+                if (compData) {
+                    compData.decisions.forEach(d => {
+                        const decisionText = d.included ? 'INCLUDE' : (d.excluded ? 'EXCLUDE' : 'PENDING');
+                        baseData[`${d.reviewer}_DECISION`] = decisionText;
+                        baseData[`${d.reviewer}_REASON`] = d.reasonExclusion || '';
+                    });
+
+                    // Add summary columns
+                    baseData['INCLUDE_COUNT'] = compData.includeCount;
+                    baseData['EXCLUDE_COUNT'] = compData.excludeCount;
+                    baseData['AGREEMENT'] = compData.fullAgreement ? 'YES' : 'NO';
+                    baseData['STATUS'] = compData.allIncluded ? 'ALL_INCLUDE' : 
+                                        (compData.allExcluded ? 'ALL_EXCLUDE' : 'CONFLICT');
+                }
+
+                return baseData;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Comparison');
+            XLSX.writeFile(wb, exportFileName);
+
+            showToast(`Planilha exportada com ${studiesToExport.length} estudos!`, 'success');
+        }
+
+        function getStudiesByComparisonFilter() {
+            let filtered = comparisonData;
+
+            switch(comparisonFilter) {
+                case 'full-agreement':
+                    filtered = comparisonData.filter(c => c.fullAgreement);
+                    break;
+                case 'full-include':
+                    filtered = comparisonData.filter(c => c.allIncluded);
+                    break;
+                case 'full-exclude':
+                    filtered = comparisonData.filter(c => c.allExcluded);
+                    break;
+                case 'conflicts':
+                    filtered = comparisonData.filter(c => c.hasConflict);
+                    break;
+                case 'majority-include':
+                    filtered = comparisonData.filter(c => c.majorityInclude && !c.fullAgreement);
+                    break;
+                case 'majority-exclude':
+                    filtered = comparisonData.filter(c => c.majorityExclude && !c.fullAgreement);
+                    break;
+                default:
+                    filtered = comparisonData;
+            }
+
+            return filtered.map(c => c.study);
+        }
+
+        function getStudiesBySelectedReviewers() {
+            if (selectedReviewersForExport.length === 0) {
+                return [];
+            }
+
+            // Get studies where selected reviewers agree
+            const filtered = comparisonData.filter(comp => {
+                const selectedDecisions = comp.decisions.filter((d, i) => 
+                    selectedReviewersForExport.includes(i)
+                );
+
+                const allInclude = selectedDecisions.every(d => d.included);
+                const allExclude = selectedDecisions.every(d => d.excluded);
+
+                return allInclude || allExclude;
+            });
+
+            return filtered.map(c => c.study);
         }
 
         function getComparisonClass(study) {
@@ -1449,7 +2187,270 @@
             return comparison && comparison.agreement ? 'comparison-match' : 'comparison-conflict';
         }
 
-        // Claude Command
+        function getConsensusClass(study) {
+            if (!comparisonMode || !comparisonData) return '';
+
+            const comparison = comparisonData.find(c => c.study.id == study.id);
+            if (!comparison) return '';
+
+            if (comparison.allIncluded) {
+                return 'consensus-include';
+            } else if (comparison.allExcluded) {
+                return 'consensus-exclude';
+            } else if (comparison.hasConflict) {
+                return 'consensus-conflict';
+            } else if (comparison.pendingCount > 0) {
+                return 'consensus-pending';
+            }
+
+            return '';
+        }
+
+        function getConsensusInfo(study) {
+            if (!comparisonMode || !comparisonData) return null;
+
+            const comparison = comparisonData.find(c => c.study.id == study.id);
+            if (!comparison) return null;
+
+            return {
+                includeCount: comparison.includeCount,
+                excludeCount: comparison.excludeCount,
+                pendingCount: comparison.pendingCount,
+                allIncluded: comparison.allIncluded,
+                allExcluded: comparison.allExcluded,
+                hasConflict: comparison.hasConflict,
+                decisions: comparison.decisions
+            };
+        }
+
+        function toggleOtherReviewersVisibility() {
+            showOtherReviewersDecisions = !showOtherReviewersDecisions;
+            const btn = document.getElementById('toggleReviewersVisibility');
+
+            if (showOtherReviewersDecisions) {
+                btn.textContent = '👁️ Mostrar Decisões dos Outros';
+                btn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                btn.textContent = '🙈 Ocultar Decisões dos Outros';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-gray-500', 'hover:bg-gray-600');
+            }
+
+            // Atualiza as visualizações
+            if (currentView === 'spreadsheet') {
+                renderSpreadsheet();
+            } else {
+                renderScreeningCards();
+            }
+        }
+
+        function showAdvancedExportModal() {
+            if (!comparisonMode || !reviewersData || reviewersData.length === 0) {
+                alert('Nenhuma comparação ativa! Carregue revisores primeiro.');
+                return;
+            }
+
+            // Popula a lista de revisores
+            const reviewersList = document.getElementById('advancedExportReviewersList');
+            reviewersList.innerHTML = reviewersData.map((r, index) => `
+                <label class="flex items-center gap-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" class="advanced-export-reviewer-checkbox" data-reviewer-index="${index}" checked>
+                    <span class="text-sm">${r.reviewer}</span>
+                </label>
+            `).join('');
+
+            // Adiciona listeners para atualizar preview
+            document.querySelectorAll('.advanced-export-reviewer-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateAdvancedExportPreview);
+            });
+            document.getElementById('advancedExportConsensusType').addEventListener('change', updateAdvancedExportPreview);
+
+            updateAdvancedExportPreview();
+            document.getElementById('advancedExportModal').style.display = 'block';
+        }
+
+        function closeAdvancedExportModal() {
+            document.getElementById('advancedExportModal').style.display = 'none';
+        }
+
+        function updateAdvancedExportPreview() {
+            const selectedReviewerIndices = Array.from(document.querySelectorAll('.advanced-export-reviewer-checkbox:checked'))
+                .map(cb => parseInt(cb.dataset.reviewerIndex));
+            const consensusType = document.getElementById('advancedExportConsensusType').value;
+
+            if (selectedReviewerIndices.length === 0) {
+                document.getElementById('advancedExportPreview').textContent = 'Selecione pelo menos um revisor';
+                return;
+            }
+
+            // Calcula quantos artigos atendem os critérios
+            const matchingStudies = comparisonData.filter(comp => {
+                const selectedDecisions = comp.decisions.filter((d, i) => selectedReviewerIndices.includes(i));
+
+                if (selectedDecisions.length === 0) return false;
+
+                switch (consensusType) {
+                    case 'all-agree-include':
+                        return selectedDecisions.every(d => d.included);
+                    case 'all-agree-exclude':
+                        return selectedDecisions.every(d => d.excluded);
+                    case 'all-agree-any':
+                        const allInclude = selectedDecisions.every(d => d.included);
+                        const allExclude = selectedDecisions.every(d => d.excluded);
+                        return allInclude || allExclude;
+                    case 'any-include':
+                        return selectedDecisions.some(d => d.included);
+                    case 'any-exclude':
+                        return selectedDecisions.some(d => d.excluded);
+                    case 'majority-include':
+                        const includeCount = selectedDecisions.filter(d => d.included).length;
+                        return includeCount > (selectedDecisions.length / 2);
+                    case 'majority-exclude':
+                        const excludeCount = selectedDecisions.filter(d => d.excluded).length;
+                        return excludeCount > (selectedDecisions.length / 2);
+                    default:
+                        return false;
+                }
+            });
+
+            const reviewerNames = selectedReviewerIndices.map(i => reviewersData[i].reviewer).join(', ');
+            document.getElementById('advancedExportPreview').textContent =
+                `${matchingStudies.length} artigos encontrados (Revisores: ${reviewerNames})`;
+        }
+
+        function executeAdvancedExport() {
+            const selectedReviewerIndices = Array.from(document.querySelectorAll('.advanced-export-reviewer-checkbox:checked'))
+                .map(cb => parseInt(cb.dataset.reviewerIndex));
+            const consensusType = document.getElementById('advancedExportConsensusType').value;
+            const customFilename = document.getElementById('advancedExportFilename').value.trim();
+
+            if (selectedReviewerIndices.length === 0) {
+                alert('Selecione pelo menos um revisor!');
+                return;
+            }
+
+            // Filtra os estudos de acordo com os critérios
+            const matchingComparisons = comparisonData.filter(comp => {
+                const selectedDecisions = comp.decisions.filter((d, i) => selectedReviewerIndices.includes(i));
+
+                if (selectedDecisions.length === 0) return false;
+
+                switch (consensusType) {
+                    case 'all-agree-include':
+                        return selectedDecisions.every(d => d.included);
+                    case 'all-agree-exclude':
+                        return selectedDecisions.every(d => d.excluded);
+                    case 'all-agree-any':
+                        const allInclude = selectedDecisions.every(d => d.included);
+                        const allExclude = selectedDecisions.every(d => d.excluded);
+                        return allInclude || allExclude;
+                    case 'any-include':
+                        return selectedDecisions.some(d => d.included);
+                    case 'any-exclude':
+                        return selectedDecisions.some(d => d.excluded);
+                    case 'majority-include':
+                        const includeCount = selectedDecisions.filter(d => d.included).length;
+                        return includeCount > (selectedDecisions.length / 2);
+                    case 'majority-exclude':
+                        const excludeCount = selectedDecisions.filter(d => d.excluded).length;
+                        return excludeCount > (selectedDecisions.length / 2);
+                    default:
+                        return false;
+                }
+            });
+
+            if (matchingComparisons.length === 0) {
+                alert('Nenhum artigo atende aos critérios selecionados!');
+                return;
+            }
+
+            // Gera o arquivo Excel
+            const data = matchingComparisons.map(compData => {
+                const study = compData.study;
+                const baseData = {
+                    ID: study.id,
+                    TITLE: study.title,
+                    AUTHOR: study.authors[0] || '',
+                    YEAR: study.year,
+                    DOI: study.doi || '',
+                    ABSTRACT: study.abstract || ''
+                };
+
+                // Adiciona colunas de decisão de cada revisor
+                compData.decisions.forEach(d => {
+                    const decisionText = d.included ? 'INCLUDE' : (d.excluded ? 'EXCLUDE' : 'PENDING');
+                    baseData[`${d.reviewer}_DECISION`] = decisionText;
+                    baseData[`${d.reviewer}_REASON`] = d.reasonExclusion || '';
+                });
+
+                // Adiciona colunas de resumo
+                baseData['INCLUDE_COUNT'] = compData.includeCount;
+                baseData['EXCLUDE_COUNT'] = compData.excludeCount;
+                baseData['PENDING_COUNT'] = compData.pendingCount;
+                baseData['AGREEMENT'] = compData.fullAgreement ? 'YES' : 'NO';
+                baseData['STATUS'] = compData.allIncluded ? 'ALL_INCLUDE' :
+                                    (compData.allExcluded ? 'ALL_EXCLUDE' : 'CONFLICT');
+
+                return baseData;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Export');
+
+            // Define o nome do arquivo
+            const filename = customFilename || `Comparison_Advanced_${Date.now()}.xlsx`;
+            XLSX.writeFile(wb, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`);
+
+            showToast(`✅ Planilha exportada com ${matchingComparisons.length} artigos!`, 'success');
+            closeAdvancedExportModal();
+        }
+
+        function saveNewReviewerDecisions() {
+            if (!comparisonMode || !newReviewerName) {
+                alert('Nenhuma sessão de comparação ativa!');
+                return;
+            }
+
+            // Verifica se há decisões a salvar
+            const decisionsCount = studies.filter(s => s.included || s.excluded).length;
+            if (decisionsCount === 0) {
+                alert('Você ainda não fez nenhuma decisão! Revise alguns artigos primeiro.');
+                return;
+            }
+
+            // Adiciona o novo revisor aos reviewersData
+            const newReviewerData = {
+                reviewer: newReviewerName,
+                studies: studies.map(s => ({
+                    id: s.id,
+                    title: s.title,
+                    authors: s.authors,
+                    year: s.year,
+                    doi: s.doi,
+                    abstract: s.abstract,
+                    included: s.included,
+                    excluded: s.excluded,
+                    reasonExclusion: s.reasonExclusion || '',
+                    observations: s.observations || ''
+                }))
+            };
+
+            reviewersData.push(newReviewerData);
+
+            // Atualiza comparisonData para incluir o novo revisor
+            displayEnhancedComparison();
+
+            // Exibe mensagem de sucesso
+            alert(`✅ Suas decisões foram salvas com sucesso!\n\n📊 ${decisionsCount} decisões registradas\n👤 Revisor: ${newReviewerName}\n\n💡 Agora você pode exportar a comparação atualizada incluindo suas decisões.`);
+
+            // Atualiza visualizações
+            applyFilters();
+
+            showToast(`Decisões de ${newReviewerName} adicionadas à comparação!`, 'success');
+        }
+
         let picoFields = [
             { label: 'POPULATION', placeholder: 'Describe your population/participants...', value: '' },
             { label: 'INTERVENTION', placeholder: 'Describe the intervention/exposure...', value: '' },
@@ -1568,7 +2569,6 @@
                 return;
             }
 
-            // Build PICO section from dynamic fields
             let picoSection = '';
             picoFields.forEach(field => {
                 const value = field.value || '[PREENCHER]';
@@ -1602,13 +2602,10 @@ HERE THE TABLE:
             document.getElementById('claudeCommandText').value = command;
             document.getElementById('claudeCommandOutput').classList.remove('hidden');
 
-            // Copy to clipboard
             navigator.clipboard.writeText(command).then(() => {
                 showToast(`Comando copiado! (${selectedStudies.length} estudos selecionados)`, 'success');
             });
         }
-
-        // ==================== CLAUDE RESPONSE PARSER ====================
 
         function showClaudeResponseParser() {
             document.getElementById('claudeResponseModal').style.display = 'block';
@@ -1630,7 +2627,6 @@ HERE THE TABLE:
 
             parsedClaudeDecisions = [];
 
-            // Try different parsing strategies
             const strategies = [
                 parseMarkdownTable,
                 parseTextTable,
@@ -1653,7 +2649,6 @@ HERE THE TABLE:
                 return;
             }
 
-            // Match with existing studies
             parsedClaudeDecisions.forEach(decision => {
                 decision.matchedStudy = findMatchingStudy(decision.studyId, decision.title);
             });
@@ -1669,15 +2664,13 @@ HERE THE TABLE:
             const decisions = [];
             const lines = text.split('\n');
             
-            // Look for table rows (contains |)
             const tableLines = lines.filter(line => line.includes('|') && !line.match(/^[\s]*\|[\s-:]+\|/));
             
-            if (tableLines.length < 2) return null; // Need at least header + 1 row
+            if (tableLines.length < 2) return null;
             
-            // Skip header row(s)
             const dataRows = tableLines.slice(1).filter(line => {
                 const cells = line.split('|').map(c => c.trim()).filter(c => c);
-                return cells.length >= 3; // At least ID, Title, Status
+                return cells.length >= 3;
             });
 
             dataRows.forEach(line => {
@@ -1689,7 +2682,6 @@ HERE THE TABLE:
                     const status = cells[2];
                     const reason = cells[3] || '';
 
-                    // Determine decision
                     const statusUpper = status.toUpperCase();
                     let decision = 'pending';
                     if (statusUpper.includes('INCLUDE') || statusUpper.includes('INCLUIR')) {
@@ -1712,7 +2704,6 @@ HERE THE TABLE:
         }
 
         function parseTextTable(text) {
-            // Similar to markdown but more flexible spacing
             return parseMarkdownTable(text);
         }
 
@@ -1721,17 +2712,12 @@ HERE THE TABLE:
             const lines = text.split('\n');
             
             lines.forEach(line => {
-                // Look for patterns like:
-                // - Author et al., YEAR - INCLUDE/EXCLUDE - reason
-                // * Author et al., YEAR: INCLUDE - reason
-                
                 const bulletMatch = line.match(/^[\s]*[-*•]\s*(.+?)\s*[-:]\s*(INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)/i);
                 if (bulletMatch) {
                     const studyId = bulletMatch[1].trim();
                     const statusMatch = bulletMatch[2].toUpperCase();
                     const decision = statusMatch.includes('INCLUDE') || statusMatch.includes('INCLUIR') ? 'include' : 'exclude';
                     
-                    // Try to extract reason (everything after decision)
                     const reasonMatch = line.match(/(?:INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)[\s:-]*(.+)$/i);
                     const reason = reasonMatch ? reasonMatch[1].trim() : '';
 
@@ -1753,10 +2739,6 @@ HERE THE TABLE:
             const lines = text.split('\n');
             
             lines.forEach(line => {
-                // Look for simple patterns:
-                // Author et al., YEAR - INCLUDE
-                // Author et al., YEAR: EXCLUDE - reason
-                
                 const match = line.match(/(.+?)\s*[-:]\s*(INCLUDE|EXCLUDE|INCLUIR|EXCLUIR)/i);
                 if (match) {
                     const studyId = match[1].trim();
@@ -1780,7 +2762,6 @@ HERE THE TABLE:
         }
 
         function findMatchingStudy(studyId, title) {
-            // Try exact Study ID match first
             let match = studies.find(s => {
                 const authorText = s.authors && s.authors.length > 0 
                     ? s.authors[0] + (s.authors.length > 1 ? ' et al.' : '')
@@ -1791,7 +2772,6 @@ HERE THE TABLE:
 
             if (match) return match;
 
-            // Try fuzzy title match
             if (title) {
                 const titleLower = title.toLowerCase();
                 match = studies.find(s => {
@@ -1802,7 +2782,6 @@ HERE THE TABLE:
 
             if (match) return match;
 
-            // Try author name match
             const authorMatch = studyId.match(/^([A-Za-z]+)/);
             if (authorMatch) {
                 const authorName = authorMatch[1];
@@ -1864,15 +2843,13 @@ HERE THE TABLE:
                 if (decision.decision === 'include') {
                     study.included = true;
                     study.excluded = false;
-                    // REGRA: Se tem reason mas é INCLUDE, coloca em observations
                     if (decision.reason && decision.reason !== '-') {
                         study.observations = decision.reason;
-                        study.reasonExclusion = '';  // Limpa reason for exclusion
+                        study.reasonExclusion = '';
                     }
                 } else if (decision.decision === 'exclude') {
                     study.included = false;
                     study.excluded = true;
-                    // REGRA: Se é EXCLUDE, coloca em reasonExclusion
                     if (decision.reason) {
                         study.reasonExclusion = decision.reason;
                     }
@@ -1880,7 +2857,6 @@ HERE THE TABLE:
                 appliedCount++;
             });
 
-            // Update UI
             updateStats();
             renderSpreadsheet();
             renderScreeningList();
@@ -1888,21 +2864,17 @@ HERE THE TABLE:
                 renderStudyDetails();
             }
 
-            // Auto-save
             autoSave();
 
             closeClaudeResponseModal();
             showToast(`${appliedCount} decisões aplicadas com sucesso!`, 'success');
         }
 
-        // Close modals when clicking outside
         window.onclick = function(event) {
             if (event.target.className === 'modal') {
                 event.target.style.display = 'none';
             }
         }
-
-        // ==================== PROJECT MANAGEMENT & AUTO-SAVE ====================
 
         function checkForSavedProjects() {
             const projects = getAllProjects();
@@ -1960,12 +2932,10 @@ HERE THE TABLE:
                 return;
             }
 
-            // Load project data
             currentProject = project;
             studies = project.studies || [];
             keywords = project.keywords || keywords;
 
-            // Update UI
             document.getElementById('currentProjectName').textContent = project.name;
             document.getElementById('uploadArea').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
@@ -1989,7 +2959,6 @@ HERE THE TABLE:
             
             if (projectIndex === -1) return;
 
-            // Update project data
             projects[projectIndex].studies = studies;
             projects[projectIndex].keywords = keywords;
             projects[projectIndex].updatedAt = new Date().toISOString();
@@ -2085,7 +3054,6 @@ HERE THE TABLE:
             const filteredProjects = projects.filter(p => p.id !== projectId);
             saveProjectsList(filteredProjects);
 
-            // If deleting current project, reset app
             if (currentProject && currentProject.id === projectId) {
                 currentProject = null;
                 studies = [];
@@ -2147,13 +3115,11 @@ HERE THE TABLE:
                     try {
                         const importedData = JSON.parse(event.target.result);
                         
-                        // Validate data
                         if (!importedData.projectName || !importedData.studies) {
                             alert('Arquivo de projeto inválido!');
                             return;
                         }
 
-                        // Create new project from import
                         const projectId = generateProjectId();
                         const projects = getAllProjects();
                         
@@ -2203,7 +3169,6 @@ HERE THE TABLE:
                 return;
             }
 
-            // Sort by last updated
             projects.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
             listDiv.innerHTML = '';
@@ -2242,7 +3207,6 @@ HERE THE TABLE:
                 listDiv.appendChild(projectCard);
             });
 
-            // Add import button at the end
             const importCard = document.createElement('div');
             importCard.className = 'border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition cursor-pointer';
             importCard.onclick = importProjectFile;
@@ -2280,8 +3244,6 @@ HERE THE TABLE:
             }, 3000);
         }
 
-        // ==================== ADVANCED SEARCH SYSTEM ====================
-
         function toggleSearchHelp() {
             const helpDiv = document.getElementById('searchHelp');
             helpDiv.classList.toggle('hidden');
@@ -2301,13 +3263,11 @@ HERE THE TABLE:
             const searchInput = document.getElementById('searchInput');
             const searchInputScreening = document.getElementById('searchInputScreening');
             
-            // Get query from whichever view is active
             let query = '';
             if (currentView === 'spreadsheet' && searchInput) {
                 query = searchInput.value.trim();
             } else if (currentView === 'screening' && searchInputScreening) {
                 query = searchInputScreening.value.trim();
-                // Sync to spreadsheet input
                 if (searchInput) searchInput.value = query;
             }
 
@@ -2318,27 +3278,22 @@ HERE THE TABLE:
                 return;
             }
 
-            // Parse and execute search
             searchFilteredStudies = studies.filter(study => matchStudyWithQuery(study, query));
 
-            // Apply filters (will use searchFilteredStudies)
             applyFilters();
         }
 
         function matchStudyWithQuery(study, query) {
             try {
-                // Parse the query into tokens
                 const tokens = tokenizeQuery(query);
-                // Evaluate the boolean expression
                 return evaluateQuery(study, tokens);
             } catch (error) {
                 console.error('Search error:', error);
-                return true; // On error, include all
+                return true;
             }
         }
 
         function tokenizeQuery(query) {
-            // Tokenize the query string
             const tokens = [];
             let current = '';
             let inQuotes = false;
@@ -2397,7 +3352,6 @@ HERE THE TABLE:
             if (upper === 'OR') return [{ type: 'OR' }];
             if (upper === 'NOT') return [{ type: 'NOT' }];
             
-            // Check for field-specific search (field:term)
             const fieldMatch = word.match(/^(\w+):(.+)$/);
             if (fieldMatch) {
                 return [{ type: 'FIELD', field: fieldMatch[1].toLowerCase(), value: fieldMatch[2] }];
@@ -2409,7 +3363,6 @@ HERE THE TABLE:
         function evaluateQuery(study, tokens) {
             if (tokens.length === 0) return true;
 
-            // Simple recursive descent parser for boolean expressions
             let pos = 0;
 
             function parseExpression() {
@@ -2480,11 +3433,9 @@ HERE THE TABLE:
         }
 
         function matchTerm(study, term) {
-            // Wildcard support (asterisk)
             const pattern = term.replace(/\*/g, '.*');
             const regex = new RegExp(pattern, 'i');
 
-            // Search in all fields
             const searchableText = [
                 study.title,
                 study.authors.join(' '),
