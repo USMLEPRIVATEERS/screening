@@ -459,6 +459,9 @@
                             <button onclick="exportSpreadsheet(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
                                 <span class="text-indigo-600">📊</span> Baixar Planilha Excel
                             </button>
+                            <button onclick="exportAsRIS(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                                <span class="text-orange-600">📄</span> Exportar como RIS
+                            </button>
                             <button onclick="copyTableToClipboard(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t rounded-b-lg">
                                 <span class="text-purple-600">📋</span> Copiar p/ Excel
                             </button>
@@ -753,8 +756,8 @@
                 </div>
 
                 <div class="mt-6 text-center">
-                    <button onclick="proceedToDeduplication()" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold text-lg">
-                        ✅ Confirmar e Prosseguir para Deduplicação
+                    <button onclick="proceedFromFilesConfirmation()" id="confirmFilesButton" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold text-lg">
+                        ✅ Confirmar e Prosseguir
                     </button>
                 </div>
             </div>
@@ -1272,6 +1275,7 @@
             doi: 0,
             title: 0
         };
+        let isSingleFileMode = false; // Track if we're processing a single file
 
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
@@ -1345,21 +1349,52 @@
                 if (files.length > 1) {
                     await processMultipleFiles(Array.from(files));
                 } else {
-                    // Single file - use original workflow
-                    const file = files[0];
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const content = e.target.result;
-                        parseRISFile(content);
-                    };
-                    reader.readAsText(file);
+                    // Single file - use new workflow with format detection
+                    await processSingleFile(files[0]);
                 }
             }
+        }
+
+        async function processSingleFile(file) {
+            showLoading('Carregando arquivo...', 'Lendo e processando o arquivo...');
+
+            isSingleFileMode = true; // Mark as single file mode
+            allFilesStudies = [];
+            fileContents = []; // Reset file contents
+
+            const content = await readFileContent(file);
+            const studies = parseFileContent(content, file.name);
+
+            // Store raw content for calibration
+            fileContents.push({
+                filename: file.name,
+                content: content
+            });
+
+            // Coletar estatísticas
+            const studiesWithYear = studies.filter(s => s.year && s.year.trim() !== '').length;
+            const studiesWithoutYear = studies.length - studiesWithYear;
+
+            const fileStats = [{
+                filename: file.name,
+                total: studies.length,
+                withYear: studiesWithYear,
+                withoutYear: studiesWithoutYear
+            }];
+
+            allFilesStudies = studies;
+
+            await sleep(300);
+            hideLoading();
+
+            // Mostrar modal de confirmação (sem opção de deduplicação)
+            showSingleFileConfirmationModal(fileStats, allFilesStudies.length);
         }
 
         async function processMultipleFiles(files) {
             showLoading('Carregando arquivos...', 'Lendo e processando os arquivos...');
 
+            isSingleFileMode = false; // Mark as multiple file mode
             allFilesStudies = [];
             fileContents = []; // Reset file contents
             const fileStats = [];  // Para armazenar estatísticas de cada arquivo
@@ -1440,7 +1475,7 @@
             const titleTags = rules.title || ['TI', 'T1', 'ST'];
             const authorTags = rules.author || ['AU', 'A1', 'FAU'];
             const yearTags = rules.year || ['PY', 'Y1', 'DA'];
-            const doiTags = rules.doi || ['DO']; // Removido M3 - será tratado separadamente
+            const doiTags = rules.doi || ['DO', 'L2']; // DO (padrão), L2 (Embase). M3 tratado separadamente
             const abstractTags = rules.abstract || ['AB', 'N2'];
 
             const titlePattern = new RegExp(`^(${titleTags.join('|')})\\s+-`);
@@ -1513,21 +1548,6 @@
                             currentStudy.doi = cleanDoi;
                         }
                         currentField = 'doi';
-                    }
-                // M3 - Pode ser DOI (PSYCARTICLES) ou tipo de documento (EMBASE)
-                // Só aceita se for DOI válido
-                } else if (trimmedLine.match(/^M3\s+-/)) {
-                    if (currentStudy) {
-                        const value = trimmedLine.replace(/^M3\s+-\s*/, '').trim();
-                        // Remove "doi:" prefix se houver
-                        const cleanValue = value.replace(/^doi:/i, '').trim();
-                        // Só aceita se começar com 10. (DOI válido)
-                        // Ignora se for apenas palavra como "Review", "Article", "Editorial"
-                        if (cleanValue && cleanValue.match(/^10\.\d{4,}/)) {
-                            currentStudy.doi = cleanValue;
-                            currentField = 'doi';
-                        }
-                        // Se não for DOI, ignora (é tipo de documento)
                     }
                 // ID
                 } else if (trimmedLine.match(/^ID\s+-/)) {
@@ -1633,10 +1653,13 @@
                         currentStudy.abstract = value;
                         currentField = 'abstract';
                     }
-                } else if (trimmedLine.startsWith('LID -') && trimmedLine.includes('doi')) {
-                    if (currentStudy) {
-                        const doiMatch = trimmedLine.match(/10\.\d{4,}\/[^\s\]]+/);
-                        if (doiMatch) currentStudy.doi = doiMatch[0];
+                } else if ((trimmedLine.startsWith('LID -') || trimmedLine.startsWith('AID -')) && trimmedLine.includes('[doi]')) {
+                    if (currentStudy && !currentStudy.doi) { // Only set if not already set
+                        // Extract DOI, removing [doi] suffix
+                        const doiMatch = trimmedLine.match(/10\.\d{4,}[^\s\[]+/);
+                        if (doiMatch) {
+                            currentStudy.doi = doiMatch[0];
+                        }
                     }
                 } else if (trimmedLine.length > 0 && line.startsWith('      ') && currentField && currentStudy) {
                     // NBIB continuation lines start with 6 spaces (but NOT a tag)
@@ -2489,6 +2512,90 @@
             link.click();
             
             showToast('Projeto completo exportado com sucesso!', 'success');
+        }
+
+        function exportAsRIS() {
+            if (!currentProject) {
+                alert('Nenhum projeto ativo para exportar!');
+                return;
+            }
+
+            if (!studies || studies.length === 0) {
+                alert('Nenhum estudo para exportar!');
+                return;
+            }
+
+            // Generate RIS format
+            let risContent = '';
+
+            studies.forEach(study => {
+                // Type of reference (always JOUR for journal article)
+                risContent += 'TY  - JOUR\n';
+
+                // Title
+                if (study.title) {
+                    risContent += `TI  - ${study.title}\n`;
+                }
+
+                // Authors
+                if (study.authors && study.authors.length > 0) {
+                    study.authors.forEach(author => {
+                        risContent += `AU  - ${author}\n`;
+                    });
+                }
+
+                // Year
+                if (study.year) {
+                    risContent += `PY  - ${study.year}\n`;
+                }
+
+                // DOI
+                if (study.doi) {
+                    risContent += `DO  - ${study.doi}\n`;
+                }
+
+                // Abstract
+                if (study.abstract) {
+                    risContent += `AB  - ${study.abstract}\n`;
+                }
+
+                // Custom fields for screening decisions
+                if (study.included) {
+                    risContent += `N1  - INCLUDED\n`;
+                } else if (study.excluded) {
+                    risContent += `N1  - EXCLUDED: ${study.reasonExclusion || 'No reason provided'}\n`;
+                }
+
+                // Observations
+                if (study.observations) {
+                    risContent += `N2  - ${study.observations}\n`;
+                }
+
+                // ID
+                if (study.id) {
+                    risContent += `ID  - ${study.id}\n`;
+                }
+
+                // End of record
+                risContent += 'ER  - \n\n';
+            });
+
+            // Create download
+            const blob = new Blob([risContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            const projectName = currentProject.name.replace(/[^a-z0-9]/gi, '_');
+            const timestamp = new Date().toISOString().split('T')[0];
+            a.download = `${projectName}_${timestamp}.ris`;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast(`${studies.length} estudos exportados em formato RIS!`, 'success');
         }
 
         function importDecisions() {
@@ -5100,19 +5207,25 @@ HERE THE TABLE:
             updateProgress(0);
             await sleep(300);
 
+            // Remove DOI duplicates - use reverse iteration to avoid index issues
             if (doiDuplicates.length > 0) {
+                const indicesToRemove = new Set();
+
                 doiDuplicates.forEach(group => {
                     group.items.forEach(item => {
-                        if (item._removeMe) {
-                            const index = allFilesStudies.findIndex(s =>
-                                normalizeTitle(s.title) === normalizeTitle(item.title) &&
-                                s.year === item.year
-                            );
-                            if (index > -1) {
-                                allFilesStudies.splice(index, 1);
-                            }
+                        if (item._removeMe && item.originalIndex !== undefined) {
+                            indicesToRemove.add(item.originalIndex);
                         }
                     });
+                });
+
+                // Remove in reverse order to maintain indices
+                const sortedIndices = Array.from(indicesToRemove).sort((a, b) => b - a);
+                sortedIndices.forEach(index => {
+                    if (index >= 0 && index < allFilesStudies.length) {
+                        allFilesStudies.splice(index, 1);
+                        duplicatesRemoved.doi++;
+                    }
                 });
             }
 
@@ -5264,11 +5377,100 @@ HERE THE TABLE:
                 document.getElementById('noYearWarning').style.display = 'none';
             }
 
+            // Update button text for multiple file mode (with deduplication)
+            document.getElementById('confirmFilesButton').innerHTML = '✅ Confirmar e Prosseguir para Deduplicação';
+
             document.getElementById('filesConfirmationModal').style.display = 'block';
         }
 
         function closeFilesConfirmationModal() {
             document.getElementById('filesConfirmationModal').style.display = 'none';
+        }
+
+        function showSingleFileConfirmationModal(fileStats, totalArticles) {
+            const totalNoYear = fileStats.reduce((sum, f) => sum + f.withoutYear, 0);
+
+            document.getElementById('totalArticlesLoaded').textContent = totalArticles;
+            document.getElementById('totalFilesLoaded').textContent = '1';
+
+            const listDiv = document.getElementById('filesListConfirmation');
+            listDiv.innerHTML = '';
+
+            fileStats.forEach((stat, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+
+                fileDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <p class="font-semibold text-sm text-gray-800">${stat.filename}</p>
+                            <p class="text-xs text-gray-600 mt-1">
+                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                    ${stat.total} artigos
+                                </span>
+                                ${stat.withYear > 0 ? `
+                                <span class="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded ml-1">
+                                    ${stat.withYear} com ano
+                                </span>
+                                ` : ''}
+                                ${stat.withoutYear > 0 ? `
+                                <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded ml-1">
+                                    ${stat.withoutYear} sem ano
+                                </span>
+                                ` : ''}
+                            </p>
+                        </div>
+                        <button
+                            onclick="openCalibrationModal(${index})"
+                            class="ml-4 bg-purple-600 hover:bg-purple-700 text-white text-xs px-3 py-2 rounded-lg transition-colors"
+                            title="Calibrar parser para este arquivo"
+                        >
+                            🔧 Calibrar
+                        </button>
+                    </div>
+                `;
+
+                listDiv.appendChild(fileDiv);
+            });
+
+            // Mostrar aviso se houver artigos sem ano
+            if (totalNoYear > 0) {
+                document.getElementById('noYearWarning').style.display = 'block';
+                document.getElementById('noYearCount').textContent = totalNoYear;
+            } else {
+                document.getElementById('noYearWarning').style.display = 'none';
+            }
+
+            // Update button text for single file mode (no deduplication)
+            document.getElementById('confirmFilesButton').innerHTML = '✅ Confirmar e Iniciar Triagem';
+
+            document.getElementById('filesConfirmationModal').style.display = 'block';
+        }
+
+        function proceedFromFilesConfirmation() {
+            if (isSingleFileMode) {
+                proceedFromSingleFile();
+            } else {
+                proceedToDeduplication();
+            }
+        }
+
+        function proceedFromSingleFile() {
+            closeFilesConfirmationModal();
+
+            // Carregar os estudos diretamente na tela principal (sem deduplicação)
+            studies = allFilesStudies.map((study, index) => ({
+                ...study,
+                id: index + 1,
+                decision: '',
+                reason: '',
+                include: null
+            }));
+
+            displayStudies();
+            document.getElementById('uploadArea').style.display = 'none';
+            document.getElementById('screeningArea').style.display = 'block';
+            updateStats();
         }
 
         async function proceedToDeduplication() {
@@ -5341,8 +5543,8 @@ HERE THE TABLE:
             // Build patterns - use custom if available, otherwise use defaults
             const patterns = {
                 type: customPatterns.type ?
-                    new RegExp(`^(${customPatterns.type.join('|')})\\s+-`) :
-                    /^TY\s+-/,
+                    new RegExp(`^(${customPatterns.type.join('|')})\\s*-`) :
+                    /^(TY|PMID)\s*-/,
                 title: customPatterns.title ?
                     new RegExp(`^(${customPatterns.title.join('|')})\\s+-`) :
                     /^(TI|T1|ST)\s+-/,
@@ -5354,7 +5556,7 @@ HERE THE TABLE:
                     /^(PY|Y1|DA|DP)\s+-/,
                 doi: customPatterns.doi ?
                     new RegExp(`^(${customPatterns.doi.join('|')})\\s+-`) :
-                    /^(DO|M3)\s+-/,
+                    /^(DO|L2|LID|AID)\s+-/,
                 abstract: customPatterns.abstract ?
                     new RegExp(`^(${customPatterns.abstract.join('|')})\\s+-`) :
                     /^(AB|N2)\s+-/,
@@ -5641,19 +5843,25 @@ HERE THE TABLE:
         }
 
         function finishDeduplication() {
+            // Remove title duplicates - use reverse iteration to avoid index issues
             if (titleDuplicates.length > 0) {
+                const indicesToRemove = new Set();
+
                 titleDuplicates.forEach(group => {
                     group.items.forEach(item => {
-                        if (item._removeMe) {
-                            const index = allFilesStudies.findIndex(s =>
-                                normalizeTitle(s.title) === normalizeTitle(item.title) &&
-                                s.year === item.year
-                            );
-                            if (index > -1) {
-                                allFilesStudies.splice(index, 1);
-                            }
+                        if (item._removeMe && item.originalIndex !== undefined) {
+                            indicesToRemove.add(item.originalIndex);
                         }
                     });
+                });
+
+                // Remove in reverse order to maintain indices
+                const sortedIndices = Array.from(indicesToRemove).sort((a, b) => b - a);
+                sortedIndices.forEach(index => {
+                    if (index >= 0 && index < allFilesStudies.length) {
+                        allFilesStudies.splice(index, 1);
+                        duplicatesRemoved.title++;
+                    }
                 });
             }
 
