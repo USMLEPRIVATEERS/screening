@@ -836,6 +836,16 @@
                 </button>
 
                 <div id="claudeResponsePreview" class="hidden">
+                    <div class="mb-4 bg-purple-50 p-4 rounded-lg">
+                        <label class="block font-semibold mb-2">📊 Selecione a coluna que contém as decisões (INCLUDE/EXCLUDE/PENDING):</label>
+                        <select id="decisionColumnSelect" class="w-full border rounded px-4 py-2" onchange="updateDecisionColumnMapping()">
+                            <option value="">-- Selecione a coluna --</option>
+                        </select>
+                        <p class="text-xs text-purple-600 mt-2">
+                            💡 O sistema tentará detectar automaticamente colunas como "STATUS", "DECISION", "DECISÃO", etc.
+                        </p>
+                    </div>
+
                     <div class="mb-4">
                         <h3 class="font-semibold text-lg mb-2">Preview das Decisões:</h3>
                         <div class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
@@ -1157,15 +1167,16 @@
             let authors = [];
 
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
+                const line = lines[i];
+                const trimmedLine = line.trim();
 
-                if (line.startsWith('PMID-')) {
+                if (trimmedLine.startsWith('PMID-')) {
                     if (currentStudy && currentStudy.title) {
                         currentStudy.authors = authors.slice();
                         studies.push({...currentStudy});
                     }
                     currentStudy = {
-                        id: line.substring(5).trim(),
+                        id: trimmedLine.substring(5).trim(),
                         doi: '',
                         title: '',
                         authors: [],
@@ -1178,47 +1189,49 @@
                         observations: ''
                     };
                     authors = [];
-                } else if (line.startsWith('TI  -')) {
+                    currentField = '';
+                } else if (trimmedLine.startsWith('TI  -')) {
                     if (currentStudy) {
-                        currentStudy.title = line.substring(6).trim();
+                        currentStudy.title = trimmedLine.substring(6).trim();
                         currentField = 'title';
                     }
-                } else if (line.startsWith('AU  -') || line.startsWith('FAU -')) {
-                    const author = line.substring(6).trim();
+                } else if (trimmedLine.startsWith('AU  -') || trimmedLine.startsWith('FAU -')) {
+                    const author = trimmedLine.substring(6).trim();
                     if (author) authors.push(author);
                     currentField = 'author';
-                } else if (line.startsWith('DP  -')) {
+                } else if (trimmedLine.startsWith('DP  -')) {
                     if (currentStudy) {
-                        const yearMatch = line.match(/\d{4}/);
+                        const yearMatch = trimmedLine.match(/\d{4}/);
                         if (yearMatch) currentStudy.year = yearMatch[0];
                         currentField = 'year';
                     }
-                } else if (line.startsWith('AB  -')) {
+                } else if (trimmedLine.startsWith('AB  -')) {
                     if (currentStudy) {
-                        currentStudy.abstract = line.substring(6).trim();
+                        currentStudy.abstract = trimmedLine.substring(6).trim();
                         currentField = 'abstract';
                     }
-                } else if (line.startsWith('LID -') && line.includes('doi')) {
+                } else if (trimmedLine.startsWith('LID -') && trimmedLine.includes('doi')) {
                     if (currentStudy) {
-                        const doiMatch = line.match(/10\.\d{4,}\/[^\s\]]+/);
+                        const doiMatch = trimmedLine.match(/10\.\d{4,}\/[^\s\]]+/);
                         if (doiMatch) currentStudy.doi = doiMatch[0];
                     }
-                } else if (line.length > 0 && line.startsWith('      ') && currentField && currentStudy) {
-                    const continuation = line.trim();
+                } else if (trimmedLine.length > 0 && line.startsWith('      ') && currentField && currentStudy) {
+                    // NBIB continuation lines start with 6 spaces (but NOT a tag)
+                    const continuation = trimmedLine;
                     if (currentField === 'title') {
                         currentStudy.title += ' ' + continuation;
                     } else if (currentField === 'abstract') {
                         currentStudy.abstract += ' ' + continuation;
                     }
-                } else if (line === '' && currentStudy && currentStudy.title) {
-                    currentStudy.authors = authors.slice();
-                    studies.push({...currentStudy});
-                    currentStudy = null;
-                    authors = [];
-                    currentField = '';
+                } else if (trimmedLine === '' || trimmedLine.match(/^[A-Z]{2,4}\s*-/)) {
+                    // Empty line or new tag = reset field but don't save yet
+                    if (trimmedLine.match(/^[A-Z]{2,4}\s*-/)) {
+                        currentField = '';
+                    }
                 }
             }
 
+            // Save last study
             if (currentStudy && currentStudy.title) {
                 currentStudy.authors = authors.slice();
                 studies.push({...currentStudy});
@@ -2995,6 +3008,9 @@
             { label: 'OUTCOME', placeholder: 'Describe the outcomes of interest...', value: '' }
         ];
         let parsedClaudeDecisions = [];
+        let rawClaudeData = null;
+        let detectedColumns = [];
+        let decisionColumnIndex = -1;
 
         function showClaudeCommandModal() {
             renderPicoFields();
@@ -3123,17 +3139,18 @@ HERE THE TABLE:
 
             const selectedStudies = studies.slice(start - 1, end);
             selectedStudies.forEach(study => {
-                const authorText = study.authors && study.authors.length > 0 
+                const authorText = study.authors && study.authors.length > 0
                     ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
                     : '';
-                const studyId = authorText && study.year 
+                const studyId = authorText && study.year
                     ? `${authorText}, ${study.year}`
                     : study.id;
-                
+
                 const title = study.title.replace(/\|/g, '¦');
-                const abstract = (study.abstract || 'N/A').replace(/\|/g, '¦').substring(0, 500);
-                
-                command += `| ${studyId} | ${title} | ${abstract}... | PENDING | - |\n`;
+                // MODIFICADO: Abstract completo, sem substring
+                const abstract = (study.abstract || 'N/A').replace(/\|/g, '¦').replace(/\n/g, ' ');
+
+                command += `| ${studyId} | ${title} | ${abstract} | PENDING | - |\n`;
             });
 
             document.getElementById('claudeCommandText').value = command;
@@ -3156,45 +3173,134 @@ HERE THE TABLE:
 
         function parseClaudeResponse() {
             const input = document.getElementById('claudeResponseInput').value.trim();
-            
+
             if (!input) {
                 alert('Cole a resposta do Claude primeiro!');
                 return;
             }
 
-            parsedClaudeDecisions = [];
+            // Parse table and detect columns
+            const tableData = parseMarkdownTableWithColumns(input);
 
-            const strategies = [
-                parseMarkdownTable,
-                parseTextTable,
-                parseBulletList,
-                parseSimpleLines
-            ];
-
-            let parsed = false;
-            for (const strategy of strategies) {
-                const result = strategy(input);
-                if (result && result.length > 0) {
-                    parsedClaudeDecisions = result;
-                    parsed = true;
-                    break;
-                }
-            }
-
-            if (!parsed || parsedClaudeDecisions.length === 0) {
-                alert('Não foi possível identificar decisões na resposta. Verifique o formato.');
+            if (!tableData || tableData.rows.length === 0) {
+                alert('Não foi possível identificar uma tabela na resposta. Verifique o formato.');
                 return;
             }
 
-            parsedClaudeDecisions.forEach(decision => {
-                decision.matchedStudy = findMatchingStudy(decision.studyId, decision.title);
+            rawClaudeData = tableData;
+            detectedColumns = tableData.columns;
+
+            // Populate column dropdown
+            const select = document.getElementById('decisionColumnSelect');
+            select.innerHTML = '<option value="">-- Selecione a coluna --</option>';
+
+            detectedColumns.forEach((col, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = col;
+                select.appendChild(option);
+            });
+
+            // Auto-detect decision column
+            const decisionKeywords = ['status', 'decision', 'decisão', 'decisao', 'include', 'exclude'];
+            decisionColumnIndex = detectedColumns.findIndex(col =>
+                decisionKeywords.some(keyword => col.toLowerCase().includes(keyword))
+            );
+
+            if (decisionColumnIndex >= 0) {
+                select.value = decisionColumnIndex;
+                showToast(`Coluna "${detectedColumns[decisionColumnIndex]}" detectada automaticamente!`, 'success');
+            }
+
+            updateDecisionColumnMapping();
+            document.getElementById('claudeResponsePreview').classList.remove('hidden');
+        }
+
+        function parseMarkdownTableWithColumns(text) {
+            const lines = text.split('\n');
+            const tableLines = lines.filter(line => line.includes('|') && !line.match(/^[\s]*\|[\s-:]+\|/));
+
+            if (tableLines.length < 2) return null;
+
+            // Get headers
+            const headerLine = tableLines[0];
+            const columns = headerLine.split('|').map(c => c.trim()).filter(c => c);
+
+            // Get data rows
+            const rows = [];
+            tableLines.slice(1).forEach(line => {
+                const cells = line.split('|').map(c => c.trim()).filter(c => c);
+                if (cells.length >= columns.length) {
+                    const row = {};
+                    columns.forEach((col, index) => {
+                        row[col] = cells[index] || '';
+                    });
+                    rows.push(row);
+                }
+            });
+
+            return { columns, rows };
+        }
+
+        function updateDecisionColumnMapping() {
+            if (!rawClaudeData) return;
+
+            const selectedIndex = parseInt(document.getElementById('decisionColumnSelect').value);
+            if (selectedIndex < 0 || isNaN(selectedIndex)) {
+                return;
+            }
+
+            decisionColumnIndex = selectedIndex;
+            const decisionColumn = detectedColumns[decisionColumnIndex];
+
+            parsedClaudeDecisions = [];
+
+            rawClaudeData.rows.forEach(row => {
+                // Find study ID column (usually first column or contains author names)
+                const studyId = row[detectedColumns[0]] || '';
+
+                // Find title column (usually second column or contains "title")
+                const titleColIndex = detectedColumns.findIndex(c => c.toLowerCase().includes('title') || c.toLowerCase().includes('título'));
+                const title = titleColIndex >= 0 ? row[detectedColumns[titleColIndex]] : row[detectedColumns[1]] || '';
+
+                // Get decision from selected column
+                const rawDecision = row[decisionColumn] || '';
+                const decision = normalizeDecision(rawDecision);
+
+                // Find reason column
+                const reasonColIndex = detectedColumns.findIndex(c =>
+                    c.toLowerCase().includes('reason') ||
+                    c.toLowerCase().includes('exclusion') ||
+                    c.toLowerCase().includes('motivo')
+                );
+                const reason = reasonColIndex >= 0 ? row[detectedColumns[reasonColIndex]] : '';
+
+                const matchedStudy = findMatchingStudy(studyId, title);
+
+                parsedClaudeDecisions.push({
+                    studyId,
+                    title,
+                    decision,
+                    rawDecision,
+                    reason,
+                    matchedStudy
+                });
             });
 
             renderClaudeDecisionsPreview();
-            document.getElementById('claudeResponsePreview').classList.remove('hidden');
-            
+
             const matchCount = parsedClaudeDecisions.filter(d => d.matchedStudy).length;
-            showToast(`${parsedClaudeDecisions.length} decisões encontradas, ${matchCount} com match!`, 'success');
+            showToast(`${parsedClaudeDecisions.length} decisões processadas, ${matchCount} com match!`, 'success');
+        }
+
+        function normalizeDecision(rawDecision) {
+            const upper = rawDecision.toUpperCase().trim();
+            if (upper.includes('INCLUDE') || upper.includes('INCLUIR') || upper === 'I') {
+                return 'include';
+            } else if (upper.includes('EXCLUDE') || upper.includes('EXCLUIR') || upper === 'E') {
+                return 'exclude';
+            }
+            return 'pending';
         }
 
         function parseMarkdownTable(text) {
@@ -3338,26 +3444,36 @@ HERE THE TABLE:
             parsedClaudeDecisions.forEach((decision, index) => {
                 const row = document.createElement('tr');
                 row.className = decision.matchedStudy ? 'bg-green-50' : 'bg-red-50';
-                
-                const decisionBadge = decision.decision === 'include' 
-                    ? '<span class="bg-green-500 text-white px-2 py-1 rounded text-xs">INCLUDE</span>'
-                    : decision.decision === 'exclude'
-                    ? '<span class="bg-red-500 text-white px-2 py-1 rounded text-xs">EXCLUDE</span>'
-                    : '<span class="bg-gray-500 text-white px-2 py-1 rounded text-xs">PENDING</span>';
 
-                const matchBadge = decision.matchedStudy 
-                    ? '<span class="text-green-600 font-bold">✓</span>' 
+                const matchBadge = decision.matchedStudy
+                    ? '<span class="text-green-600 font-bold">✓</span>'
                     : '<span class="text-red-600 font-bold">✗</span>';
+
+                // Create dropdown for decision
+                const decisionDropdown = `
+                    <select class="border rounded px-2 py-1 text-xs" onchange="updateClaudeDecision(${index}, this.value)">
+                        <option value="include" ${decision.decision === 'include' ? 'selected' : ''}>INCLUDE</option>
+                        <option value="exclude" ${decision.decision === 'exclude' ? 'selected' : ''}>EXCLUDE</option>
+                        <option value="pending" ${decision.decision === 'pending' ? 'selected' : ''}>PENDING</option>
+                    </select>
+                `;
 
                 row.innerHTML = `
                     <td class="border p-2">${decision.studyId}</td>
                     <td class="border p-2">${decision.title || (decision.matchedStudy ? decision.matchedStudy.title.substring(0, 50) + '...' : '-')}</td>
-                    <td class="border p-2 text-center">${decisionBadge}</td>
+                    <td class="border p-2 text-center">${decisionDropdown}</td>
                     <td class="border p-2">${decision.reason || '-'}</td>
                     <td class="border p-2 text-center">${matchBadge}</td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        function updateClaudeDecision(index, newDecision) {
+            if (parsedClaudeDecisions[index]) {
+                parsedClaudeDecisions[index].decision = newDecision;
+                showToast(`Decisão atualizada para: ${newDecision.toUpperCase()}`, 'success');
+            }
         }
 
         function applyClaudeDecisions() {
