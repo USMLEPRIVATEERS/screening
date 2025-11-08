@@ -116,38 +116,38 @@
         .abstract-cell {
             max-width: 400px;
         }
-        
-        /* Sticky header - MELHORADO */
-        .table-container {
-            position: relative;
-            overflow: auto;
-            max-height: calc(100vh - 400px);
-        }
-        
-        #spreadsheetTable thead th {
-            position: sticky;
-            top: 0;
-            background-color: #e5e7eb;
-            border-bottom: 2px solid #9ca3af;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            z-index: 10;
-        }
-        
-        /* Row numbers */
-        .row-number {
-            background-color: #f3f4f6;
-            font-weight: bold;
-            color: #6b7280;
-            text-align: center;
-            width: 50px;
-            position: sticky;
-            left: 0;
-            z-index: 5;
-        }
-        
-        #spreadsheetTable thead th.row-number {
-            z-index: 15;
-        }
+
+
+/* Sticky header - SEM LIMITE DE ALTURA */
+.table-container {
+    position: relative;
+    overflow: visible;
+}
+
+#spreadsheetTable thead th {
+    position: sticky;
+    top: 0;
+    background-color: #e5e7eb;
+    border-bottom: 2px solid #9ca3af;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+/* Row numbers */
+.row-number {
+    background-color: #f3f4f6;
+    font-weight: bold;
+    color: #6b7280;
+    text-align: center;
+    width: 50px;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+#spreadsheetTable thead th.row-number {
+    z-index: 15;
+}
         
         .tooltip {
             position: relative;
