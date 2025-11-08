@@ -214,6 +214,69 @@
             visibility: visible;
             opacity: 1;
         }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .loading-content {
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 500px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s ease;
+        }
+        .duplicate-card {
+            border: 2px solid #f59e0b;
+            background-color: #fef3c7;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .duplicate-item {
+            border: 1px solid #d1d5db;
+            background-color: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+        }
+        .duplicate-item.selected {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -232,13 +295,14 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <p class="text-xl mb-2 text-gray-700">Arraste e solte o arquivo RIS aqui</p>
+            <p class="text-xl mb-2 text-gray-700">Arraste e solte um ou múltiplos arquivos aqui</p>
             <p class="text-sm text-gray-500 mb-4">ou</p>
             <label class="bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition inline-block">
-                Selecionar Arquivo
-                <input type="file" id="fileInput" accept=".txt,.ris" class="hidden">
+                Selecionar Arquivo(s)
+                <input type="file" id="fileInput" accept=".txt,.ris,.nbib,.ciw" multiple class="hidden">
             </label>
-            <p class="text-xs text-gray-500 mt-4">Formatos aceitos: .txt, .ris</p>
+            <p class="text-xs text-gray-500 mt-4">Formatos aceitos: .txt, .ris, .nbib, .ciw</p>
+            <p class="text-xs text-blue-600 mt-2 font-semibold">✨ Suporta múltiplos arquivos com deduplicação automática!</p>
         </div>
 
         <div id="mainApp" class="hidden">
@@ -439,6 +503,73 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h2 class="text-2xl font-bold mb-3" id="loadingTitle">Processando arquivos...</h2>
+                <p class="text-gray-600 mb-4" id="loadingMessage">Analisando dados...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2" id="progressText">0%</p>
+            </div>
+        </div>
+
+        <!-- DOI Deduplication Modal -->
+        <div id="doiDeduplicationModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeDoiDeduplicationModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-4">🔍 Duplicados encontrados por DOI</h2>
+                <p class="text-gray-600 mb-4">Foram encontrados <span id="doiDuplicateCount" class="font-bold text-red-600">0</span> grupos de artigos duplicados baseados no DOI.</p>
+
+                <div class="flex gap-3 mb-4">
+                    <button onclick="removeAllDoiDuplicates()" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition font-semibold">
+                        🗑️ Remover Todos os Duplicados (manter apenas 1 de cada)
+                    </button>
+                    <button onclick="keepAllDoiDuplicates()" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition font-semibold">
+                        ✅ Manter Todos e Prosseguir
+                    </button>
+                </div>
+
+                <div id="doiDuplicatesList" class="space-y-4">
+                </div>
+
+                <div class="mt-6 text-center">
+                    <button onclick="proceedToTitleDeduplication()" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold text-lg">
+                        ➡️ Prosseguir para Deduplicação por Título
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title Deduplication Modal -->
+        <div id="titleDeduplicationModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeTitleDeduplicationModal()">&times;</span>
+                <h2 class="text-2xl font-bold mb-4">📝 Possíveis duplicados encontrados por Título</h2>
+                <p class="text-gray-600 mb-4">Foram encontrados <span id="titleDuplicateCount" class="font-bold text-orange-600">0</span> grupos de artigos com títulos similares.</p>
+
+                <div class="flex gap-3 mb-4">
+                    <button onclick="removeAllTitleDuplicates()" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition font-semibold">
+                        🗑️ Remover Todos os Duplicados (manter apenas 1 de cada)
+                    </button>
+                    <button onclick="keepAllTitleDuplicates()" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition font-semibold">
+                        ✅ Manter Todos e Prosseguir
+                    </button>
+                </div>
+
+                <div id="titleDuplicatesList" class="space-y-4">
+                </div>
+
+                <div class="mt-6 text-center">
+                    <button onclick="finishDeduplication()" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-semibold text-lg">
+                        ✅ Finalizar e Iniciar Projeto
+                    </button>
                 </div>
             </div>
         </div>
@@ -801,6 +932,15 @@
         let currentSearchQuery = '';
         let searchFilteredStudies = [];
 
+        // Deduplication variables
+        let allFilesStudies = [];
+        let doiDuplicates = [];
+        let titleDuplicates = [];
+        let duplicatesRemoved = {
+            doi: 0,
+            title: 0
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
             document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -847,16 +987,413 @@
             handleFiles(files);
         }
 
-        function handleFiles(files) {
+        async function handleFiles(files) {
             if (files.length > 0) {
-                const file = files[0];
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const content = e.target.result;
-                    parseRISFile(content);
-                };
-                reader.readAsText(file);
+                // Multiple files - use deduplication workflow
+                if (files.length > 1) {
+                    await processMultipleFiles(Array.from(files));
+                } else {
+                    // Single file - use original workflow
+                    const file = files[0];
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const content = e.target.result;
+                        parseRISFile(content);
+                    };
+                    reader.readAsText(file);
+                }
             }
+        }
+
+        async function processMultipleFiles(files) {
+            showLoading('Carregando arquivos...', 'Lendo e processando os arquivos...');
+
+            allFilesStudies = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                updateProgress((i / files.length) * 30);
+
+                const content = await readFileContent(file);
+                const studies = parseFileContent(content, file.name);
+
+                allFilesStudies = allFilesStudies.concat(studies);
+            }
+
+            updateProgress(40);
+            await sleep(300);
+
+            showLoading('Analisando duplicados...', `${allFilesStudies.length} artigos carregados. Procurando duplicados por DOI...`);
+            updateProgress(50);
+            await sleep(500);
+
+            doiDuplicates = findDuplicatesByDOI(allFilesStudies);
+
+            updateProgress(100);
+            await sleep(300);
+
+            hideLoading();
+
+            if (doiDuplicates.length > 0) {
+                showDoiDeduplicationModal();
+            } else {
+                proceedToTitleDeduplication();
+            }
+        }
+
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // File format parsers
+        function parseFileContent(content, filename) {
+            // Try to detect format
+            if (filename.endsWith('.nbib') || content.includes('PMID-')) {
+                return parseNBIB(content);
+            } else if (filename.endsWith('.ciw') || content.includes('FN Clarivate')) {
+                return parseCIW(content);
+            } else {
+                // Default to RIS format
+                return parseRIS(content);
+            }
+        }
+
+        function parseRIS(content) {
+            const studies = [];
+            const lines = content.split('\n');
+            let currentStudy = null;
+            let currentField = '';
+            let authors = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.startsWith('TY  -')) {
+                    if (currentStudy && currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = {
+                        id: '',
+                        doi: '',
+                        title: '',
+                        authors: [],
+                        year: '',
+                        abstract: '',
+                        pdfFound: false,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: ''
+                    };
+                    authors = [];
+                } else if (line.startsWith('TI  -') || line.startsWith('ST  -')) {
+                    if (currentStudy) {
+                        currentStudy.title = line.substring(6).trim();
+                        currentField = 'title';
+                    }
+                } else if (line.startsWith('AU  -') || line.startsWith('A1  -')) {
+                    authors.push(line.substring(6).trim());
+                    currentField = 'author';
+                } else if (line.startsWith('PY  -') || line.startsWith('Y1  -')) {
+                    if (currentStudy) {
+                        currentStudy.year = line.substring(6).trim();
+                        currentField = 'year';
+                    }
+                } else if (line.startsWith('AB  -') || line.startsWith('N2  -')) {
+                    if (currentStudy) {
+                        currentStudy.abstract = line.substring(6).trim();
+                        currentField = 'abstract';
+                    }
+                } else if (line.startsWith('DO  -')) {
+                    if (currentStudy) {
+                        currentStudy.doi = line.substring(6).trim();
+                        currentField = 'doi';
+                    }
+                } else if (line.startsWith('ID  -')) {
+                    if (currentStudy) {
+                        currentStudy.id = line.substring(6).trim();
+                        currentField = 'id';
+                    }
+                } else if (line.startsWith('ER  -')) {
+                    if (currentStudy && currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = null;
+                    authors = [];
+                    currentField = '';
+                } else if (line.length > 0 && !line.includes('  -') && currentField && currentStudy) {
+                    if (currentField === 'title') {
+                        currentStudy.title += ' ' + line;
+                    } else if (currentField === 'abstract') {
+                        currentStudy.abstract += ' ' + line;
+                    }
+                }
+            }
+
+            if (currentStudy && currentStudy.title) {
+                currentStudy.authors = authors.slice();
+                studies.push({...currentStudy});
+            }
+
+            return studies;
+        }
+
+        function parseNBIB(content) {
+            const studies = [];
+            const lines = content.split('\n');
+            let currentStudy = null;
+            let currentField = '';
+            let authors = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.startsWith('PMID-')) {
+                    if (currentStudy && currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = {
+                        id: line.substring(5).trim(),
+                        doi: '',
+                        title: '',
+                        authors: [],
+                        year: '',
+                        abstract: '',
+                        pdfFound: false,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: ''
+                    };
+                    authors = [];
+                } else if (line.startsWith('TI  -')) {
+                    if (currentStudy) {
+                        currentStudy.title = line.substring(6).trim();
+                        currentField = 'title';
+                    }
+                } else if (line.startsWith('AU  -') || line.startsWith('FAU -')) {
+                    const author = line.substring(6).trim();
+                    if (author) authors.push(author);
+                    currentField = 'author';
+                } else if (line.startsWith('DP  -')) {
+                    if (currentStudy) {
+                        const yearMatch = line.match(/\d{4}/);
+                        if (yearMatch) currentStudy.year = yearMatch[0];
+                        currentField = 'year';
+                    }
+                } else if (line.startsWith('AB  -')) {
+                    if (currentStudy) {
+                        currentStudy.abstract = line.substring(6).trim();
+                        currentField = 'abstract';
+                    }
+                } else if (line.startsWith('LID -') && line.includes('doi')) {
+                    if (currentStudy) {
+                        const doiMatch = line.match(/10\.\d{4,}\/[^\s\]]+/);
+                        if (doiMatch) currentStudy.doi = doiMatch[0];
+                    }
+                } else if (line.length > 0 && line.startsWith('      ') && currentField && currentStudy) {
+                    const continuation = line.trim();
+                    if (currentField === 'title') {
+                        currentStudy.title += ' ' + continuation;
+                    } else if (currentField === 'abstract') {
+                        currentStudy.abstract += ' ' + continuation;
+                    }
+                } else if (line === '' && currentStudy && currentStudy.title) {
+                    currentStudy.authors = authors.slice();
+                    studies.push({...currentStudy});
+                    currentStudy = null;
+                    authors = [];
+                    currentField = '';
+                }
+            }
+
+            if (currentStudy && currentStudy.title) {
+                currentStudy.authors = authors.slice();
+                studies.push({...currentStudy});
+            }
+
+            return studies;
+        }
+
+        function parseCIW(content) {
+            const studies = [];
+            const lines = content.split('\n');
+            let currentStudy = null;
+            let currentField = '';
+            let authors = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (line.startsWith('PT ')) {
+                    if (currentStudy && currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = {
+                        id: '',
+                        doi: '',
+                        title: '',
+                        authors: [],
+                        year: '',
+                        abstract: '',
+                        pdfFound: false,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: ''
+                    };
+                    authors = [];
+                } else if (line.startsWith('TI ')) {
+                    if (currentStudy) {
+                        currentStudy.title = line.substring(3).trim();
+                        currentField = 'title';
+                    }
+                } else if (line.startsWith('AU ') || line.startsWith('AF ')) {
+                    const author = line.substring(3).trim();
+                    if (author) authors.push(author);
+                    currentField = 'author';
+                } else if (line.startsWith('PY ')) {
+                    if (currentStudy) {
+                        currentStudy.year = line.substring(3).trim();
+                        currentField = 'year';
+                    }
+                } else if (line.startsWith('AB ')) {
+                    if (currentStudy) {
+                        currentStudy.abstract = line.substring(3).trim();
+                        currentField = 'abstract';
+                    }
+                } else if (line.startsWith('DI ')) {
+                    if (currentStudy) {
+                        currentStudy.doi = line.substring(3).trim();
+                        currentField = 'doi';
+                    }
+                } else if (line.startsWith('ER')) {
+                    if (currentStudy && currentStudy.title) {
+                        currentStudy.authors = authors.slice();
+                        studies.push({...currentStudy});
+                    }
+                    currentStudy = null;
+                    authors = [];
+                    currentField = '';
+                } else if (line.startsWith('   ') && currentField && currentStudy) {
+                    const continuation = line.trim();
+                    if (currentField === 'title') {
+                        currentStudy.title += ' ' + continuation;
+                    } else if (currentField === 'abstract') {
+                        currentStudy.abstract += ' ' + continuation;
+                    } else if (currentField === 'author') {
+                        authors.push(continuation);
+                    }
+                }
+            }
+
+            if (currentStudy && currentStudy.title) {
+                currentStudy.authors = authors.slice();
+                studies.push({...currentStudy});
+            }
+
+            return studies;
+        }
+
+        // Normalization functions
+        function normalizeDOI(doi) {
+            if (!doi) return '';
+            return doi.trim()
+                .toLowerCase()
+                .replace(/^https?:\/\/(dx\.)?doi\.org\//i, '')
+                .replace(/^doi:\s*/i, '');
+        }
+
+        function normalizeTitle(title) {
+            if (!title) return '';
+            return title
+                .toLowerCase()
+                .replace(/[^a-z\s]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Find duplicates
+        function findDuplicatesByDOI(studies) {
+            const doiMap = new Map();
+            const duplicates = [];
+
+            studies.forEach((study, index) => {
+                const normalizedDoi = normalizeDOI(study.doi);
+                if (normalizedDoi) {
+                    if (!doiMap.has(normalizedDoi)) {
+                        doiMap.set(normalizedDoi, []);
+                    }
+                    doiMap.get(normalizedDoi).push({...study, originalIndex: index});
+                }
+            });
+
+            doiMap.forEach((group, doi) => {
+                if (group.length > 1) {
+                    duplicates.push({
+                        doi: doi,
+                        items: group
+                    });
+                }
+            });
+
+            return duplicates;
+        }
+
+        function findDuplicatesByTitle(studies) {
+            const titleMap = new Map();
+            const duplicates = [];
+
+            studies.forEach((study, index) => {
+                const normalizedTitle = normalizeTitle(study.title);
+                if (normalizedTitle) {
+                    if (!titleMap.has(normalizedTitle)) {
+                        titleMap.set(normalizedTitle, []);
+                    }
+                    titleMap.get(normalizedTitle).push({...study, originalIndex: index});
+                }
+            });
+
+            titleMap.forEach((group, title) => {
+                if (group.length > 1) {
+                    duplicates.push({
+                        normalizedTitle: title,
+                        items: group
+                    });
+                }
+            });
+
+            return duplicates;
+        }
+
+        // UI Functions for loading
+        function showLoading(title, message) {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('loadingTitle').textContent = title;
+            document.getElementById('loadingMessage').textContent = message;
+            updateProgress(0);
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = Math.round(percent) + '%';
         }
 
         function parseRISFile(content) {
@@ -3482,6 +4019,314 @@ HERE THE TABLE:
                 default:
                     return matchTerm(study, value);
             }
+        }
+
+        // Deduplication Modal Functions
+        function showDoiDeduplicationModal() {
+            document.getElementById('doiDuplicateCount').textContent = doiDuplicates.length;
+
+            const listDiv = document.getElementById('doiDuplicatesList');
+            listDiv.innerHTML = '';
+
+            doiDuplicates.forEach((group, groupIndex) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'duplicate-card';
+
+                let html = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-lg">Grupo ${groupIndex + 1} - DOI: ${group.doi}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="removeDuplicatesFromGroup(${groupIndex}, 'doi')"
+                                class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                🗑️ Remover Duplicados (manter 1)
+                            </button>
+                            <button onclick="keepGroupDuplicates(${groupIndex}, 'doi')"
+                                class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
+                                ✅ Manter Todos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                `;
+
+                group.items.forEach((item, itemIndex) => {
+                    html += `
+                        <div class="duplicate-item" id="doi-group-${groupIndex}-item-${itemIndex}">
+                            <div class="flex justify-between">
+                                <div class="flex-1">
+                                    <p class="font-semibold text-sm">${item.title}</p>
+                                    <p class="text-xs text-gray-600 mt-1">
+                                        Autores: ${item.authors.slice(0, 3).join(', ')}${item.authors.length > 3 ? ' et al.' : ''}
+                                    </p>
+                                    <p class="text-xs text-gray-600">Ano: ${item.year || 'N/A'}</p>
+                                </div>
+                                <div class="ml-4">
+                                    <input type="radio" name="doi-group-${groupIndex}" value="${itemIndex}"
+                                        ${itemIndex === 0 ? 'checked' : ''}
+                                        onchange="selectDuplicate(${groupIndex}, ${itemIndex}, 'doi')">
+                                    <label class="text-xs ml-1">Manter este</label>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+                groupDiv.innerHTML = html;
+                listDiv.appendChild(groupDiv);
+            });
+
+            document.getElementById('doiDeduplicationModal').style.display = 'block';
+        }
+
+        function closeDoiDeduplicationModal() {
+            document.getElementById('doiDeduplicationModal').style.display = 'none';
+        }
+
+        function selectDuplicate(groupIndex, itemIndex, type) {
+            const prefix = type === 'doi' ? 'doi' : 'title';
+            const items = document.querySelectorAll(`[id^="${prefix}-group-${groupIndex}-item-"]`);
+            items.forEach((item, idx) => {
+                if (idx === itemIndex) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function removeAllDoiDuplicates() {
+            doiDuplicates.forEach((group, index) => {
+                removeDuplicatesFromGroup(index, 'doi', false);
+            });
+            duplicatesRemoved.doi = doiDuplicates.reduce((sum, group) => sum + (group.items.length - 1), 0);
+            closeDoiDeduplicationModal();
+            proceedToTitleDeduplication();
+        }
+
+        function removeDuplicatesFromGroup(groupIndex, type, autoClose = true) {
+            const group = type === 'doi' ? doiDuplicates[groupIndex] : titleDuplicates[groupIndex];
+            const selectedRadio = document.querySelector(`input[name="${type}-group-${groupIndex}"]:checked`);
+            const keepIndex = selectedRadio ? parseInt(selectedRadio.value) : 0;
+
+            group.items.forEach((item, index) => {
+                if (index !== keepIndex) {
+                    item._removeMe = true;
+                }
+            });
+
+            if (autoClose) {
+                if (type === 'doi') {
+                    duplicatesRemoved.doi += group.items.length - 1;
+                    closeDoiDeduplicationModal();
+                    proceedToTitleDeduplication();
+                } else {
+                    duplicatesRemoved.title += group.items.length - 1;
+                    closeTitleDeduplicationModal();
+                    finishDeduplication();
+                }
+            }
+        }
+
+        function keepGroupDuplicates(groupIndex, type) {
+            if (type === 'doi') {
+                doiDuplicates[groupIndex]._kept = true;
+            } else {
+                titleDuplicates[groupIndex]._kept = true;
+            }
+        }
+
+        function keepAllDoiDuplicates() {
+            closeDoiDeduplicationModal();
+            proceedToTitleDeduplication();
+        }
+
+        async function proceedToTitleDeduplication() {
+            showLoading('Analisando títulos...', 'Procurando duplicados por título...');
+            updateProgress(0);
+            await sleep(300);
+
+            if (doiDuplicates.length > 0) {
+                doiDuplicates.forEach(group => {
+                    group.items.forEach(item => {
+                        if (item._removeMe) {
+                            const index = allFilesStudies.findIndex(s =>
+                                normalizeTitle(s.title) === normalizeTitle(item.title) &&
+                                s.year === item.year
+                            );
+                            if (index > -1) {
+                                allFilesStudies.splice(index, 1);
+                            }
+                        }
+                    });
+                });
+            }
+
+            updateProgress(30);
+            await sleep(300);
+
+            titleDuplicates = findDuplicatesByTitle(allFilesStudies);
+
+            updateProgress(100);
+            await sleep(300);
+            hideLoading();
+
+            if (titleDuplicates.length > 0) {
+                showTitleDeduplicationModal();
+            } else {
+                finishDeduplication();
+            }
+        }
+
+        function showTitleDeduplicationModal() {
+            document.getElementById('titleDuplicateCount').textContent = titleDuplicates.length;
+
+            const listDiv = document.getElementById('titleDuplicatesList');
+            listDiv.innerHTML = '';
+
+            titleDuplicates.forEach((group, groupIndex) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'duplicate-card';
+
+                let html = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-lg">Grupo ${groupIndex + 1}</h3>
+                        <div class="flex gap-2">
+                            <button onclick="removeDuplicatesFromGroup(${groupIndex}, 'title')"
+                                class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                🗑️ Remover Duplicados (manter 1)
+                            </button>
+                            <button onclick="keepGroupDuplicates(${groupIndex}, 'title')"
+                                class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
+                                ✅ Manter Todos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                `;
+
+                group.items.forEach((item, itemIndex) => {
+                    html += `
+                        <div class="duplicate-item" id="title-group-${groupIndex}-item-${itemIndex}">
+                            <div class="flex justify-between">
+                                <div class="flex-1">
+                                    <p class="font-semibold text-sm">${item.title}</p>
+                                    <p class="text-xs text-gray-600 mt-1">
+                                        DOI: ${item.doi || 'N/A'} |
+                                        Autores: ${item.authors.slice(0, 2).join(', ')}${item.authors.length > 2 ? ' et al.' : ''}
+                                    </p>
+                                    <p class="text-xs text-gray-600">Ano: ${item.year || 'N/A'}</p>
+                                </div>
+                                <div class="ml-4">
+                                    <input type="radio" name="title-group-${groupIndex}" value="${itemIndex}"
+                                        ${itemIndex === 0 ? 'checked' : ''}
+                                        onchange="selectDuplicate(${groupIndex}, ${itemIndex}, 'title')">
+                                    <label class="text-xs ml-1">Manter este</label>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+                groupDiv.innerHTML = html;
+                listDiv.appendChild(groupDiv);
+            });
+
+            document.getElementById('titleDeduplicationModal').style.display = 'block';
+        }
+
+        function closeTitleDeduplicationModal() {
+            document.getElementById('titleDeduplicationModal').style.display = 'none';
+        }
+
+        function removeAllTitleDuplicates() {
+            titleDuplicates.forEach((group, index) => {
+                removeDuplicatesFromGroup(index, 'title', false);
+            });
+            duplicatesRemoved.title = titleDuplicates.reduce((sum, group) => sum + (group.items.length - 1), 0);
+            closeTitleDeduplicationModal();
+            finishDeduplication();
+        }
+
+        function keepAllTitleDuplicates() {
+            closeTitleDeduplicationModal();
+            finishDeduplication();
+        }
+
+        function finishDeduplication() {
+            if (titleDuplicates.length > 0) {
+                titleDuplicates.forEach(group => {
+                    group.items.forEach(item => {
+                        if (item._removeMe) {
+                            const index = allFilesStudies.findIndex(s =>
+                                normalizeTitle(s.title) === normalizeTitle(item.title) &&
+                                s.year === item.year
+                            );
+                            if (index > -1) {
+                                allFilesStudies.splice(index, 1);
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Assign IDs to studies
+            allFilesStudies.forEach((study, index) => {
+                if (!study.id) {
+                    study.id = index + 1;
+                }
+            });
+
+            // Now use parseRISFile logic to continue with the app
+            if (!currentProject) {
+                const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
+                if (!projectName) {
+                    alert('É necessário dar um nome ao projeto!');
+                    return;
+                }
+
+                const projectId = generateProjectId();
+                currentProject = {
+                    id: projectId,
+                    name: projectName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    studies: [],
+                    keywords: keywords,
+                    deduplication: {
+                        doiRemoved: duplicatesRemoved.doi,
+                        titleRemoved: duplicatesRemoved.title,
+                        totalRemoved: duplicatesRemoved.doi + duplicatesRemoved.title
+                    }
+                };
+            }
+
+            studies = allFilesStudies;
+            currentProject.studies = studies;
+
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            updateRangeInfo();
+            updateResultsCounter();
+
+            const projects = getAllProjects();
+            const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+
+            if (existingIndex >= 0) {
+                projects[existingIndex] = currentProject;
+            } else {
+                projects.push(currentProject);
+            }
+
+            saveProjectsList(projects);
+            document.getElementById('currentProjectName').textContent = currentProject.name;
+
+            const totalRemoved = duplicatesRemoved.doi + duplicatesRemoved.title;
+            showToast(`Projeto iniciado! ${studies.length} estudos únicos (${totalRemoved} duplicados removidos: ${duplicatesRemoved.doi} por DOI, ${duplicatesRemoved.title} por título)`, 'success');
         }
     </script>
 </body>
