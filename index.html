@@ -45,11 +45,62 @@
             margin: 5% auto;
             padding: 30px;
             border: 1px solid #888;
-            width: 80%;
-            max-width: 800px;
+            width: 90%;
+            max-width: 1200px;
             border-radius: 8px;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
+        }
+
+        /* Responsive modal styles */
+        @media (max-width: 1024px) {
+            .modal-content {
+                width: 95%;
+                padding: 20px;
+                margin: 3% auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 98%;
+                padding: 15px;
+                margin: 2% auto;
+                max-height: 90vh;
+            }
+
+            .modal-content h2 {
+                font-size: 1.25rem;
+            }
+
+            .modal-content table {
+                font-size: 12px;
+            }
+
+            .modal-content table td,
+            .modal-content table th {
+                padding: 6px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .modal-content {
+                width: 100%;
+                height: 100%;
+                max-height: 100vh;
+                margin: 0;
+                border-radius: 0;
+                padding: 10px;
+            }
+
+            .modal-content table {
+                font-size: 10px;
+            }
+
+            .modal-content table td,
+            .modal-content table th {
+                padding: 4px;
+            }
         }
         .close {
             color: #aaa;
@@ -98,8 +149,9 @@
             color: #991b1b;
         }
         .badge-pending {
-            background-color: #fde047;
-            color: #854d0e;
+            background-color: #f9fafb;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
         }
         .comparison-match {
             background-color: #d1fae5;
@@ -120,8 +172,8 @@
             border-left: 5px solid #f59e0b !important;
         }
         .consensus-pending {
-            background-color: #f3f4f6 !important;
-            border-left: 5px solid #9ca3af !important;
+            background-color: #ffffff !important;
+            border-left: 5px solid #e5e7eb !important;
         }
         .reviewer-decision-badge {
             display: inline-block;
@@ -140,8 +192,9 @@
             color: #991b1b;
         }
         .reviewer-pending {
-            background-color: #d1d5db;
-            color: #4b5563;
+            background-color: #f9fafb;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
         }
         table {
             font-size: 14px;
@@ -188,7 +241,52 @@
         #spreadsheetTable thead th.row-number {
             z-index: 15;
         }
-        
+
+        /* Decision row colors for spreadsheet and tables */
+        .row-included {
+            background-color: #d1fae5 !important;
+            border-left: 4px solid #10b981;
+        }
+        .row-excluded {
+            background-color: #fee2e2 !important;
+            border-left: 4px solid #ef4444;
+        }
+        .row-pending {
+            background-color: #ffffff !important;
+            border-left: 4px solid #e5e7eb;
+        }
+
+        /* Decision colors for study cards */
+        .card-included {
+            background-color: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        .card-excluded {
+            background-color: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        .card-pending {
+            background-color: #ffffff;
+            border-left: 4px solid #e5e7eb;
+        }
+
+        /* Claude response preview table container */
+        #claudeResponsePreview .table-container {
+            overflow-x: auto;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        #claudeResponsePreview table {
+            min-width: 600px;
+        }
+
+        @media (max-width: 768px) {
+            #claudeResponsePreview table {
+                min-width: 500px;
+            }
+        }
+
         .tooltip {
             position: relative;
             display: inline-block;
@@ -768,13 +866,30 @@
                 <h2 class="text-2xl font-bold mb-6">🤖 Comando para Claude AI</h2>
                 
                 <div class="mb-4">
+                    <label class="block font-semibold mb-2">Filtrar Estudos por Status</label>
+                    <select id="claudeCommandFilter" class="w-full border rounded px-4 py-2 mb-3" onchange="updateClaudeCommandFilter()">
+                        <option value="all">📚 Todos os Estudos</option>
+                        <option value="pending">⚪ Apenas Pendentes</option>
+                        <option value="included">✅ Apenas Incluídos</option>
+                        <option value="excluded">❌ Apenas Excluídos</option>
+                    </select>
+                    <div id="filterInfo" class="text-xs text-blue-600 mb-3 hidden">
+                        <!-- Info sobre estudos filtrados -->
+                    </div>
+                </div>
+
+                <div class="mb-4">
                     <label class="block font-semibold mb-2">Intervalo de Estudos</label>
-                    <div class="flex gap-3 items-center">
+                    <div class="flex gap-3 items-center flex-wrap">
                         <input type="number" id="rangeStart" min="1" placeholder="De" class="border rounded px-3 py-2 w-24">
                         <span>até</span>
                         <input type="number" id="rangeEnd" min="1" placeholder="Até" class="border rounded px-3 py-2 w-24">
                         <span class="text-sm text-gray-500" id="rangeInfo"></span>
                     </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        💡 O intervalo se refere aos estudos <strong>após aplicar o filtro</strong> acima.
+                        Ex: Se filtrar "Pendentes" e houver 10 pendentes, use 1 a 10.
+                    </p>
                 </div>
 
                 <div class="mb-4">
@@ -849,19 +964,21 @@
                     <div class="mb-4">
                         <h3 class="font-semibold text-lg mb-2">Preview das Decisões:</h3>
                         <div class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
-                            <table class="w-full text-xs border-collapse">
-                                <thead class="bg-gray-200 sticky top-0">
-                                    <tr>
-                                        <th class="border p-2 text-left">Study ID</th>
-                                        <th class="border p-2 text-left">Title</th>
-                                        <th class="border p-2 text-left">Decision</th>
-                                        <th class="border p-2 text-left">Reason</th>
-                                        <th class="border p-2">Match?</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="claudeResponseTableBody">
-                                </tbody>
-                            </table>
+                            <div class="table-container" style="overflow-x: auto;">
+                                <table class="w-full text-xs border-collapse">
+                                    <thead class="bg-gray-200 sticky top-0">
+                                        <tr>
+                                            <th class="border p-2 text-left">Study ID</th>
+                                            <th class="border p-2 text-left">Title</th>
+                                            <th class="border p-2 text-left">Decision</th>
+                                            <th class="border p-2 text-left">Reason</th>
+                                            <th class="border p-2">Match?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="claudeResponseTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -1605,8 +1722,20 @@
             filteredStudies.forEach((study, index) => {
                 const row = document.createElement('tr');
 
-                // Apply comparison styling if in comparison mode
-                let rowClass = getConsensusClass(study);
+                // Apply comparison styling if in comparison mode, otherwise apply decision colors
+                let rowClass = '';
+                if (comparisonMode && comparisonData) {
+                    rowClass = getConsensusClass(study);
+                } else {
+                    // Apply decision-based colors
+                    if (study.included) {
+                        rowClass = 'row-included';
+                    } else if (study.excluded) {
+                        rowClass = 'row-excluded';
+                    } else {
+                        rowClass = 'row-pending';
+                    }
+                }
                 row.className = rowClass;
                 
                 const authorText = study.authors && study.authors.length > 0 
@@ -1702,13 +1831,29 @@
             filteredStudies.forEach((study, index) => {
                 const card = document.createElement('div');
 
-                // Apply comparison styling with new consensus classes
-                let cardClass = `study-card p-4 border-2 rounded-lg cursor-pointer ${selectedStudies.has(study.id) ? 'bg-blue-50 border-blue-500' : 'bg-white hover:bg-gray-50'}`;
+                // Base card styling
+                let cardClass = 'study-card p-4 border-2 rounded-lg cursor-pointer';
 
-                // Adiciona classe de consenso
-                const consensusClass = getConsensusClass(study);
-                if (consensusClass) {
-                    cardClass += ` ${consensusClass}`;
+                // Apply comparison styling if in comparison mode, otherwise apply decision colors
+                if (comparisonMode && comparisonData) {
+                    const consensusClass = getConsensusClass(study);
+                    if (consensusClass) {
+                        cardClass += ` ${consensusClass}`;
+                    }
+                } else {
+                    // Apply decision-based colors
+                    if (study.included) {
+                        cardClass += ' card-included';
+                    } else if (study.excluded) {
+                        cardClass += ' card-excluded';
+                    } else {
+                        cardClass += ' card-pending';
+                    }
+                }
+
+                // Add selection styling
+                if (selectedStudies.has(study.id)) {
+                    cardClass += ' border-blue-500 ring-2 ring-blue-300';
                 }
 
                 card.className = cardClass;
@@ -3015,7 +3160,10 @@
         function showClaudeCommandModal() {
             renderPicoFields();
             document.getElementById('claudeCommandModal').style.display = 'block';
-            updateRangeInfo();
+
+            // Reset filter to "all" and update
+            document.getElementById('claudeCommandFilter').value = 'all';
+            updateClaudeCommandFilter();
         }
 
         function closeClaudeCommandModal() {
@@ -3113,12 +3261,80 @@
             }
         }
 
+        function updateClaudeCommandFilter() {
+            const filterValue = document.getElementById('claudeCommandFilter').value;
+            const filterInfo = document.getElementById('filterInfo');
+
+            // Get filtered studies
+            const filteredStudies = getClaudeCommandFilteredStudies();
+
+            // Update range inputs
+            const rangeStart = document.getElementById('rangeStart');
+            const rangeEnd = document.getElementById('rangeEnd');
+            const rangeInfo = document.getElementById('rangeInfo');
+
+            if (filteredStudies.length === 0) {
+                filterInfo.innerHTML = '⚠️ Nenhum estudo encontrado com este filtro!';
+                filterInfo.classList.remove('hidden');
+                filterInfo.classList.add('text-red-600');
+                filterInfo.classList.remove('text-blue-600');
+
+                rangeStart.value = '';
+                rangeEnd.value = '';
+                rangeInfo.textContent = '';
+                return;
+            }
+
+            // Show filter info
+            let filterText = '';
+            if (filterValue === 'pending') {
+                filterText = `⚪ ${filteredStudies.length} estudos pendentes encontrados`;
+            } else if (filterValue === 'included') {
+                filterText = `✅ ${filteredStudies.length} estudos incluídos encontrados`;
+            } else if (filterValue === 'excluded') {
+                filterText = `❌ ${filteredStudies.length} estudos excluídos encontrados`;
+            } else {
+                filterText = `📚 Total: ${filteredStudies.length} estudos`;
+            }
+
+            filterInfo.innerHTML = filterText;
+            filterInfo.classList.remove('hidden');
+            filterInfo.classList.add('text-blue-600');
+            filterInfo.classList.remove('text-red-600');
+
+            // Update range defaults
+            rangeStart.value = 1;
+            rangeEnd.value = filteredStudies.length;
+            rangeStart.max = filteredStudies.length;
+            rangeEnd.max = filteredStudies.length;
+            rangeInfo.textContent = `(de ${filteredStudies.length} estudos filtrados)`;
+        }
+
+        function getClaudeCommandFilteredStudies() {
+            const filterValue = document.getElementById('claudeCommandFilter').value;
+
+            if (filterValue === 'all') {
+                return studies;
+            } else if (filterValue === 'pending') {
+                return studies.filter(s => !s.included && !s.excluded);
+            } else if (filterValue === 'included') {
+                return studies.filter(s => s.included);
+            } else if (filterValue === 'excluded') {
+                return studies.filter(s => s.excluded);
+            }
+
+            return studies;
+        }
+
         function generateClaudeCommand() {
+            // Get filtered studies based on filter dropdown
+            const filteredStudies = getClaudeCommandFilteredStudies();
+
             const start = parseInt(document.getElementById('rangeStart').value) || 1;
-            const end = parseInt(document.getElementById('rangeEnd').value) || studies.length;
-            
-            if (start < 1 || end > studies.length || start > end) {
-                alert('Intervalo inválido! Verifique os valores.');
+            const end = parseInt(document.getElementById('rangeEnd').value) || filteredStudies.length;
+
+            if (start < 1 || end > filteredStudies.length || start > end) {
+                alert(`Intervalo inválido! Use valores entre 1 e ${filteredStudies.length}.`);
                 return;
             }
 
@@ -3137,7 +3353,7 @@ HERE THE TABLE:
 |----------|-------|----------|--------|---------------------|
 `;
 
-            const selectedStudies = studies.slice(start - 1, end);
+            const selectedStudies = filteredStudies.slice(start - 1, end);
             selectedStudies.forEach(study => {
                 const authorText = study.authors && study.authors.length > 0
                     ? study.authors[0] + (study.authors.length > 1 ? ' et al.' : '')
@@ -3156,8 +3372,19 @@ HERE THE TABLE:
             document.getElementById('claudeCommandText').value = command;
             document.getElementById('claudeCommandOutput').classList.remove('hidden');
 
+            // Create success message with filter info
+            const filterValue = document.getElementById('claudeCommandFilter').value;
+            let filterInfo = '';
+            if (filterValue === 'pending') {
+                filterInfo = ' (apenas pendentes)';
+            } else if (filterValue === 'included') {
+                filterInfo = ' (apenas incluídos)';
+            } else if (filterValue === 'excluded') {
+                filterInfo = ' (apenas excluídos)';
+            }
+
             navigator.clipboard.writeText(command).then(() => {
-                showToast(`Comando copiado! (${selectedStudies.length} estudos selecionados)`, 'success');
+                showToast(`✅ Comando copiado! ${selectedStudies.length} estudos selecionados${filterInfo}`, 'success');
             });
         }
 
@@ -3443,7 +3670,23 @@ HERE THE TABLE:
 
             parsedClaudeDecisions.forEach((decision, index) => {
                 const row = document.createElement('tr');
-                row.className = decision.matchedStudy ? 'bg-green-50' : 'bg-red-50';
+
+                // Apply color based on decision (not just match status)
+                let rowClass = '';
+                if (decision.decision === 'include') {
+                    rowClass = 'row-included';
+                } else if (decision.decision === 'exclude') {
+                    rowClass = 'row-excluded';
+                } else {
+                    rowClass = 'row-pending';
+                }
+
+                // Override with match indicator if no match found
+                if (!decision.matchedStudy) {
+                    row.style.opacity = '0.6';
+                }
+
+                row.className = rowClass;
 
                 const matchBadge = decision.matchedStudy
                     ? '<span class="text-green-600 font-bold">✓</span>'
@@ -3472,6 +3715,7 @@ HERE THE TABLE:
         function updateClaudeDecision(index, newDecision) {
             if (parsedClaudeDecisions[index]) {
                 parsedClaudeDecisions[index].decision = newDecision;
+                renderClaudeDecisionsPreview(); // Re-render to update colors
                 showToast(`Decisão atualizada para: ${newDecision.toUpperCase()}`, 'success');
             }
         }
