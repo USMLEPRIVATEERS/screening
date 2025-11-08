@@ -426,41 +426,67 @@
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex items-center gap-3">
-                        <span class="text-sm font-semibold text-gray-600">Projeto Atual:</span>
+                        <span class="text-sm font-semibold text-gray-600">Projeto:</span>
                         <span id="currentProjectName" class="text-lg font-bold text-blue-600">Sem nome</span>
-                        <button onclick="renameProject()" class="text-xs text-blue-600 hover:text-blue-800">✏️ Renomear</button>
+                        <button onclick="renameProject()" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">✏️ Renomear</button>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2">
-                            <span id="autoSaveStatus" class="text-xs text-green-600">✓ Auto-save ativo</span>
-                            <button onclick="toggleAutoSave()" id="autoSaveToggle" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">ON</button>
-                        </div>
-                        <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition text-sm">
-                            📁 Meus Projetos
-                        </button>
+                    <div class="flex items-center gap-2">
+                        <span id="autoSaveStatus" class="text-xs text-green-600">✓ Auto-save ativo</span>
+                        <button onclick="toggleAutoSave()" id="autoSaveToggle" class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">ON</button>
                     </div>
                 </div>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="showKeywordsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
-                        🔍 Configurar Keywords
+
+                <!-- Barra de Ações Principal -->
+                <div class="flex flex-wrap gap-2 items-center">
+                    <!-- Projetos -->
+                    <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm font-semibold shadow-sm">
+                        📁 Projetos
                     </button>
-                    <button onclick="exportDecisions()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-                        💾 Exportar Projeto Completo
-                    </button>
-                    <button onclick="importDecisions()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                        📥 Importar Projeto
-                    </button>
-                    <button onclick="showCompareModal()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition">
-                        🔄 Comparar Revisores
-                    </button>
-                    <button onclick="exportSpreadsheet()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
-                        📊 Baixar Planilha Excel
-                    </button>
-                    <button id="saveNewReviewerDecisionsBtn" onclick="saveNewReviewerDecisions()" class="hidden bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-teal-700 transition font-semibold">
+
+                    <!-- Menu Exportar/Importar -->
+                    <div class="relative">
+                        <button onclick="toggleDropdown('exportMenu')" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-semibold shadow-sm flex items-center gap-1">
+                            💾 Exportar/Importar
+                            <span class="text-xs">▼</span>
+                        </button>
+                        <div id="exportMenu" class="hidden absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-50 min-w-[220px]">
+                            <button onclick="exportDecisions(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 rounded-t-lg">
+                                <span class="text-green-600">💾</span> Exportar Projeto Completo
+                            </button>
+                            <button onclick="importDecisions(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                                <span class="text-blue-600">📥</span> Importar Projeto
+                            </button>
+                            <button onclick="exportSpreadsheet(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                                <span class="text-indigo-600">📊</span> Baixar Planilha Excel
+                            </button>
+                            <button onclick="copyTableToClipboard(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t rounded-b-lg">
+                                <span class="text-purple-600">📋</span> Copiar p/ Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Menu Ferramentas -->
+                    <div class="relative">
+                        <button onclick="toggleDropdown('toolsMenu')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-semibold shadow-sm flex items-center gap-1">
+                            🛠️ Ferramentas
+                            <span class="text-xs">▼</span>
+                        </button>
+                        <div id="toolsMenu" class="hidden absolute top-full left-0 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 z-50 min-w-[220px]">
+                            <button onclick="showKeywordsModal(); toggleDropdown('toolsMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 rounded-t-lg">
+                                <span class="text-purple-600">🔍</span> Configurar Keywords
+                            </button>
+                            <button onclick="showCompareModal(); toggleDropdown('toolsMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                                <span class="text-orange-600">🔄</span> Comparar Revisores
+                            </button>
+                            <button onclick="showClaudeCommandModal(); toggleDropdown('toolsMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t rounded-b-lg">
+                                <span class="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">🤖</span> Comando Claude AI
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Botão Salvar (aparece apenas no modo comparação) -->
+                    <button id="saveNewReviewerDecisionsBtn" onclick="saveNewReviewerDecisions()" class="hidden bg-gradient-to-r from-green-500 to-teal-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-teal-700 transition font-semibold shadow-sm">
                         ✅ Salvar Minhas Decisões
-                    </button>
-                    <button onclick="showClaudeCommandModal()" class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-pink-600 hover:to-purple-700 transition">
-                        🤖 Comando Claude AI
                     </button>
                 </div>
             </div>
@@ -506,20 +532,37 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
+                            <!-- Toggle Switch for Advanced Search -->
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-sm font-semibold text-gray-700">Modo de Busca:</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="advancedSearchToggle" class="sr-only peer" checked onchange="toggleSearchMode()">
+                                    <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span class="ml-3 text-sm font-medium text-gray-700">
+                                        <span id="searchModeLabel">Busca Avançada</span>
+                                    </span>
+                                </label>
+                                <button onclick="toggleSearchHelp()" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">
+                                    ❓ Ajuda
+                                </button>
+                            </div>
+
                             <div class="flex gap-2">
-                                <input type="text" 
-                                    id="searchInput" 
-                                    placeholder='🔍 Busca avançada: diabetes AND (treatment OR therapy) NOT "case report" author:Smith' 
+                                <input type="text"
+                                    id="searchInput"
+                                    placeholder='🔍 Busca avançada: diabetes AND (treatment OR therapy) NOT "case report" author:Smith'
                                     class="flex-1 border rounded px-4 py-2 text-sm"
-                                    onkeyup="performAdvancedSearch()">
+                                    onkeyup="performSearch()">
                                 <button onclick="clearSearch()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition text-sm">
                                     ✖ Limpar
                                 </button>
                             </div>
-                            <div id="searchHelp" class="hidden mt-2 bg-blue-50 p-3 rounded text-xs">
-                                <p class="font-semibold mb-2">📖 Operadores de Busca:</p>
+
+                            <!-- Advanced Search Help -->
+                            <div id="searchHelpAdvanced" class="hidden mt-2 bg-blue-50 p-3 rounded text-xs">
+                                <p class="font-semibold mb-2">📖 Operadores de Busca Avançada:</p>
                                 <ul class="space-y-1 text-gray-700">
                                     <li><strong>AND</strong> - Todos os termos devem existir: <code>diabetes AND insulin</code></li>
                                     <li><strong>OR</strong> - Qualquer termo pode existir: <code>treatment OR therapy</code></li>
@@ -530,6 +573,19 @@
                                     <li><strong>Campos específicos:</strong> <code>title:USMLE</code>, <code>author:Smith</code>, <code>year:2024</code>, <code>abstract:failure</code></li>
                                 </ul>
                                 <p class="mt-2 text-gray-600">Busca em: Título, Autores, Ano, Abstract, Observations</p>
+                            </div>
+
+                            <!-- Simple Search Help -->
+                            <div id="searchHelpSimple" class="hidden mt-2 bg-green-50 p-3 rounded text-xs">
+                                <p class="font-semibold mb-2">📖 Busca Simples:</p>
+                                <p class="text-gray-700 mb-2">Digite palavras-chave e a busca encontrará estudos que contenham qualquer uma delas.</p>
+                                <ul class="space-y-1 text-gray-700">
+                                    <li>✓ Busca <strong>case-insensitive</strong> (ignora maiúsculas/minúsculas)</li>
+                                    <li>✓ Busca em todos os campos: Título, Autores, Ano, Abstract, Observations</li>
+                                    <li>✓ Separe palavras com espaço: <code>diabetes treatment insulin</code></li>
+                                    <li>✓ Quanto mais palavras, mais estudos serão encontrados</li>
+                                </ul>
+                                <p class="mt-2 text-gray-600 italic">Dica: Use a Busca Avançada para mais controle com operadores AND, OR, NOT</p>
                             </div>
                             
                             <div id="searchResults" class="mt-2 text-sm font-semibold">
@@ -567,11 +623,11 @@
                     <div class="flex gap-6">
                         <div class="w-1/3 border-r pr-4">
                             <div class="mb-4">
-                                <input type="text" 
-                                    id="searchInputScreening" 
-                                    placeholder='🔍 Busca: diabetes AND treatment' 
+                                <input type="text"
+                                    id="searchInputScreening"
+                                    placeholder='🔍 Busca: diabetes AND treatment'
                                     class="w-full border rounded px-3 py-2 text-sm mb-2"
-                                    onkeyup="performAdvancedSearch()">
+                                    onkeyup="performSearch()">
                                 <select id="filterScreening" onchange="applyFilters()" class="w-full border rounded px-4 py-2 text-sm mb-2">
                                     <option value="all">Todos os Estudos</option>
                                     <option value="included">Apenas Incluídos</option>
@@ -1013,11 +1069,15 @@
                     </p>
                 </div>
 
-                <div class="mb-6">
-                    <button onclick="createNewProject()" class="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold">
+                <div class="mb-6 flex gap-3">
+                    <button onclick="createNewProject()" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold">
                         ➕ Criar Novo Projeto
                     </button>
+                    <button onclick="triggerImportProject()" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+                        📥 Importar Projeto
+                    </button>
                 </div>
+                <input type="file" id="importProjectInput" accept=".json" style="display: none;" onchange="importProjectFile(event)">
 
                 <div class="mb-4">
                     <h3 class="font-semibold text-lg mb-3">Projetos Salvos:</h3>
@@ -1074,7 +1134,27 @@
             updateRangeInfo();
             checkForSavedProjects();
             updateResultsCounter();
+            restoreSearchMode();
         });
+
+        function restoreSearchMode() {
+            const savedMode = localStorage.getItem('advancedSearchMode');
+            const toggle = document.getElementById('advancedSearchToggle');
+            const searchInput = document.getElementById('searchInput');
+            const modeLabel = document.getElementById('searchModeLabel');
+
+            // Default to advanced mode if not set
+            const isAdvanced = savedMode === null ? true : savedMode === 'true';
+
+            toggle.checked = isAdvanced;
+            modeLabel.textContent = isAdvanced ? 'Busca Avançada' : 'Busca Simples';
+
+            if (isAdvanced) {
+                searchInput.placeholder = '🔍 Busca avançada: diabetes AND (treatment OR therapy) NOT "case report" author:Smith';
+            } else {
+                searchInput.placeholder = '🔍 Busca simples: digite palavras-chave (diabetes treatment insulin)';
+            }
+        }
 
         function setupDragAndDrop() {
             const dropArea = document.getElementById('uploadArea');
@@ -2320,6 +2400,59 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Studies');
             XLSX.writeFile(wb, `systematic_review_${Date.now()}.xlsx`);
+        }
+
+        function copyTableToClipboard() {
+            // Prepare data in the same format as exportSpreadsheet
+            const data = studies.map(s => {
+                const authorText = s.authors && s.authors.length > 0
+                    ? s.authors[0] + (s.authors.length > 1 ? ' et al.' : '')
+                    : '';
+                const studyId = authorText && s.year
+                    ? `${authorText}, ${s.year}`
+                    : s.id;
+
+                return {
+                    'STUDY ID': studyId,
+                    'DOI LINK': s.doi ? `https://doi.org/${s.doi}` : '',
+                    'TITLE': s.title,
+                    'AUTHOR': s.authors.join(', '),
+                    'YEAR': s.year,
+                    'ABSTRACT': s.abstract || '',
+                    'PDF FOUND?': s.pdfFound ? 'TRUE' : 'FALSE',
+                    'INCLUDED': s.included ? 'TRUE' : 'FALSE',
+                    'EXCLUDED': s.excluded ? 'TRUE' : 'FALSE',
+                    'REASON FOR EXCLUSION': s.reasonExclusion || '',
+                    'OBSERVATIONS': s.observations || ''
+                };
+            });
+
+            if (data.length === 0) {
+                showToast('⚠️ Nenhum estudo para copiar!', 'warning');
+                return;
+            }
+
+            // Convert to TSV format (Tab-Separated Values)
+            // IMPORTANTE: Usar \r\n (CRLF) como Excel, não apenas \n (LF)
+            const headers = Object.keys(data[0]);
+            const tsvContent = [
+                headers.join('\t'), // Header row
+                ...data.map(row => headers.map(header => {
+                    const value = row[header] || '';
+                    // Replace tabs and newlines to prevent breaking the TSV structure
+                    return String(value).replace(/\t/g, ' ').replace(/[\r\n]+/g, ' ');
+                }).join('\t'))
+            ].join('\r\n'); // CRLF (Windows format) - mesmo formato que Excel usa
+
+            // Copy to clipboard as plain text TSV
+            navigator.clipboard.writeText(tsvContent)
+                .then(() => {
+                    showToast(`✅ ${studies.length} estudos copiados em formato TSV! Cole no Excel ou Google Planilhas.`, 'success');
+                })
+                .catch(err => {
+                    console.error('Erro ao copiar:', err);
+                    showToast('❌ Erro ao copiar para área de transferência. Verifique as permissões do navegador.', 'error');
+                });
         }
 
         function showCompareModal() {
@@ -3820,6 +3953,118 @@ HERE THE TABLE:
             updateProjectsList();
         }
 
+        function triggerImportProject() {
+            try {
+                const input = document.getElementById('importProjectInput');
+
+                if (!input) {
+                    console.error('Input de importação não encontrado!');
+                    alert('Erro: Elemento de importação não encontrado. Recarregue a página.');
+                    return;
+                }
+
+                // IMPORTANTE: Reset o input antes de abrir o seletor
+                // Isso garante que o evento onchange sempre dispare, mesmo selecionando o mesmo arquivo
+                input.value = '';
+
+                input.click();
+            } catch (error) {
+                console.error('Erro em triggerImportProject:', error);
+                alert('Erro ao abrir seletor de arquivo: ' + error.message);
+            }
+        }
+
+        function importProjectFile(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedProject = JSON.parse(e.target.result);
+
+                    // Validate project structure
+                    if (!importedProject.studies || !Array.isArray(importedProject.studies)) {
+                        throw new Error('Arquivo inválido: estrutura de projeto não encontrada');
+                    }
+
+                    // Ask user for confirmation
+                    const projectName = importedProject.projectName || importedProject.name || 'Projeto Importado';
+                    const studiesCount = importedProject.studies.length;
+
+                    const confirmImport = confirm(
+                        `Deseja importar o projeto "${projectName}"?\n\n` +
+                        `📊 Estudos: ${studiesCount}\n` +
+                        `📅 Criado em: ${importedProject.createdAt ? new Date(importedProject.createdAt).toLocaleString() : 'Data desconhecida'}\n\n` +
+                        `O projeto será salvo na sua lista de projetos.`
+                    );
+
+                    if (!confirmImport) {
+                        event.target.value = ''; // Reset input
+                        return;
+                    }
+
+                    // Generate new ID to avoid conflicts
+                    const projectId = generateProjectId();
+                    const projects = getAllProjects();
+
+                    // Check if project with same name exists
+                    let finalName = projectName;
+                    let counter = 1;
+                    while (projects.some(p => p.name === finalName)) {
+                        finalName = `${projectName} (${counter})`;
+                        counter++;
+                    }
+
+                    // Create new project with imported data
+                    const newProject = {
+                        id: projectId,
+                        name: finalName,
+                        createdAt: importedProject.createdAt || new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        studies: importedProject.studies,
+                        keywords: importedProject.keywords || {
+                            include: [],
+                            exclude: [],
+                            methods: ['introduction', 'method*', 'result*', 'conclusion*', 'background', 'discussion']
+                        },
+                        reviewer: importedProject.reviewer || importedProject.projectName || finalName
+                    };
+
+                    // Save project
+                    projects.push(newProject);
+                    saveProjectsList(projects);
+
+                    // Show success message
+                    showToast(`✅ Projeto "${finalName}" importado com sucesso! (${studiesCount} estudos)`, 'success');
+                    updateProjectsList();
+
+                    // Ask if user wants to load the imported project
+                    const loadNow = confirm('Deseja carregar este projeto agora?');
+                    if (loadNow) {
+                        loadProject(projectId);
+                        closeProjectsModal();
+                    }
+
+                } catch (error) {
+                    console.error('Erro ao importar projeto:', error);
+                    alert(`Erro ao importar projeto: ${error.message}\n\nVerifique se o arquivo é um export válido do sistema.`);
+                }
+
+                // Reset input
+                event.target.value = '';
+            };
+
+            reader.onerror = function() {
+                alert('Erro ao ler o arquivo. Tente novamente.');
+                event.target.value = '';
+            };
+
+            reader.readAsText(file);
+        }
+
         function loadProject(projectId) {
             const projects = getAllProjects();
             const project = projects.find(p => p.id === projectId);
@@ -3916,6 +4161,40 @@ HERE THE TABLE:
                 showToast('Auto-save desativado', 'warning');
             }
         }
+
+        function toggleDropdown(menuId) {
+            const menu = document.getElementById(menuId);
+            if (!menu) return;
+
+            // Fechar todos os outros menus
+            const allMenus = ['exportMenu', 'toolsMenu'];
+            allMenus.forEach(id => {
+                if (id !== menuId) {
+                    const otherMenu = document.getElementById(id);
+                    if (otherMenu) {
+                        otherMenu.classList.add('hidden');
+                    }
+                }
+            });
+
+            // Toggle o menu atual
+            menu.classList.toggle('hidden');
+        }
+
+        // Fechar dropdowns ao clicar fora
+        document.addEventListener('click', function(event) {
+            const menus = ['exportMenu', 'toolsMenu'];
+            const isClickInsideDropdown = event.target.closest('.relative');
+
+            if (!isClickInsideDropdown) {
+                menus.forEach(menuId => {
+                    const menu = document.getElementById(menuId);
+                    if (menu) {
+                        menu.classList.add('hidden');
+                    }
+                });
+            }
+        });
 
         function renameProject() {
             if (!currentProject) return;
@@ -4142,8 +4421,97 @@ HERE THE TABLE:
         }
 
         function toggleSearchHelp() {
-            const helpDiv = document.getElementById('searchHelp');
-            helpDiv.classList.toggle('hidden');
+            const isAdvancedMode = document.getElementById('advancedSearchToggle').checked;
+            const helpAdvanced = document.getElementById('searchHelpAdvanced');
+            const helpSimple = document.getElementById('searchHelpSimple');
+
+            if (isAdvancedMode) {
+                helpAdvanced.classList.toggle('hidden');
+                helpSimple.classList.add('hidden');
+            } else {
+                helpSimple.classList.toggle('hidden');
+                helpAdvanced.classList.add('hidden');
+            }
+        }
+
+        function toggleSearchMode() {
+            const toggle = document.getElementById('advancedSearchToggle');
+            const isAdvanced = toggle.checked;
+            const searchInput = document.getElementById('searchInput');
+            const modeLabel = document.getElementById('searchModeLabel');
+
+            // Update label
+            modeLabel.textContent = isAdvanced ? 'Busca Avançada' : 'Busca Simples';
+
+            // Update placeholder
+            if (isAdvanced) {
+                searchInput.placeholder = '🔍 Busca avançada: diabetes AND (treatment OR therapy) NOT "case report" author:Smith';
+            } else {
+                searchInput.placeholder = '🔍 Busca simples: digite palavras-chave (diabetes treatment insulin)';
+            }
+
+            // Hide help boxes
+            document.getElementById('searchHelpAdvanced').classList.add('hidden');
+            document.getElementById('searchHelpSimple').classList.add('hidden');
+
+            // Save preference to localStorage
+            localStorage.setItem('advancedSearchMode', isAdvanced);
+
+            // Re-run search if there's a query
+            if (searchInput.value.trim()) {
+                performSearch();
+            }
+        }
+
+        function performSearch() {
+            const toggle = document.getElementById('advancedSearchToggle');
+            const isAdvanced = toggle.checked;
+
+            if (isAdvanced) {
+                performAdvancedSearch();
+            } else {
+                performSimpleSearch();
+            }
+        }
+
+        function performSimpleSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchInputScreening = document.getElementById('searchInputScreening');
+
+            let query = '';
+            if (currentView === 'spreadsheet' && searchInput) {
+                query = searchInput.value.trim();
+            } else if (currentView === 'screening' && searchInputScreening) {
+                query = searchInputScreening.value.trim();
+                if (searchInput) searchInput.value = query;
+            }
+
+            currentSearchQuery = query;
+
+            if (!query) {
+                clearSearch();
+                return;
+            }
+
+            // Simple search: split query into keywords and find studies containing ANY of them
+            const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 0);
+
+            searchFilteredStudies = studies.filter(study => {
+                // Create searchable text from all fields
+                const searchableText = [
+                    study.title,
+                    study.authors.join(' '),
+                    study.year.toString(),
+                    study.abstract || '',
+                    study.observations || '',
+                    study.reasonExclusion || ''
+                ].join(' ').toLowerCase();
+
+                // Check if ANY keyword is found in the study
+                return keywords.some(keyword => searchableText.includes(keyword));
+            });
+
+            applyFilters();
         }
 
         function clearSearch() {
