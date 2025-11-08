@@ -5458,19 +5458,61 @@ HERE THE TABLE:
         function proceedFromSingleFile() {
             closeFilesConfirmationModal();
 
-            // Carregar os estudos diretamente na tela principal (sem deduplicação)
-            studies = allFilesStudies.map((study, index) => ({
-                ...study,
-                id: index + 1,
-                decision: '',
-                reason: '',
-                include: null
-            }));
+            // Assign IDs to studies
+            allFilesStudies.forEach((study, index) => {
+                if (!study.id) {
+                    study.id = index + 1;
+                }
+            });
 
-            displayStudies();
-            document.getElementById('uploadArea').style.display = 'none';
-            document.getElementById('screeningArea').style.display = 'block';
+            // Create project if needed
+            if (!currentProject) {
+                const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
+                if (!projectName) {
+                    alert('É necessário dar um nome ao projeto!');
+                    return;
+                }
+
+                const projectId = generateProjectId();
+                currentProject = {
+                    id: projectId,
+                    name: projectName,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    studies: [],
+                    keywords: keywords,
+                    deduplication: {
+                        doiRemoved: 0,
+                        titleRemoved: 0,
+                        totalRemoved: 0
+                    }
+                };
+            }
+
+            studies = allFilesStudies;
+            currentProject.studies = studies;
+
+            document.getElementById('uploadArea').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
             updateStats();
+            renderSpreadsheet();
+            renderScreeningList();
+            updateRangeInfo();
+            updateResultsCounter();
+
+            const projects = getAllProjects();
+            const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+
+            if (existingIndex >= 0) {
+                projects[existingIndex] = currentProject;
+            } else {
+                projects.push(currentProject);
+            }
+
+            saveProjectsList(projects);
+            document.getElementById('currentProjectName').textContent = currentProject.name;
+
+            showToast(`Projeto iniciado! ${studies.length} estudos carregados (arquivo único, sem deduplicação)`, 'success');
         }
 
         async function proceedToDeduplication() {
