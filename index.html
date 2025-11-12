@@ -456,6 +456,9 @@
                             <button onclick="importDecisions(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
                                 <span class="text-blue-600">📥</span> Importar Projeto
                             </button>
+                            <button onclick="importAdditionalRIS(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
+                                <span class="text-teal-600">➕</span> Adicionar Mais Arquivos RIS
+                            </button>
                             <button onclick="exportSpreadsheet(); toggleDropdown('exportMenu')" class="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm flex items-center gap-2 border-t">
                                 <span class="text-indigo-600">📊</span> Baixar Planilha Excel
                             </button>
@@ -507,8 +510,8 @@
                 <div id="spreadsheetView" class="p-6">
                     <div class="mb-4">
                         <div class="flex gap-3 mb-3">
-                            <button onclick="toggleAllAbstracts()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition text-sm">
-                                👁️ Mostrar/Ocultar Abstracts
+                            <button onclick="toggleAllAbstracts()" id="toggleAbstractsBtn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition text-sm">
+                                👁️ Mostrar Abstracts
                             </button>
                             <select id="filterSpreadsheet" onchange="applyFilters()" class="border rounded px-4 py-2 text-sm">
                                 <option value="all">Todos os Estudos</option>
@@ -1244,7 +1247,7 @@
 
     <script>
         let studies = [];
-        let currentView = 'spreadsheet';
+        let currentView = 'screening'; // Default to screening mode
         let selectedStudies = new Set();
         let lastClickedStudyId = null;
         let keywords = {
@@ -1252,7 +1255,7 @@
             exclude: [],
             methods: ['introduction', 'method*', 'result*', 'conclusion*', 'background', 'discussion']
         };
-        let showAbstracts = true;
+        let showAbstracts = false; // Default to hidden abstracts for better performance
         let comparisonMode = false;
         let comparisonData = null;
         let reviewersData = [];
@@ -1278,6 +1281,11 @@
         };
         let isSingleFileMode = false; // Track if we're processing a single file
 
+        // Variables to remember Claude command modal range
+        let rememberedRangeStart = null;
+        let rememberedRangeEnd = null;
+        let rememberedFilter = 'all';
+
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
             document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -1285,6 +1293,47 @@
             checkForSavedProjects();
             updateResultsCounter();
             restoreSearchMode();
+
+            // Add listeners to range inputs to save values when they change
+            const rangeStartInput = document.getElementById('rangeStart');
+            const rangeEndInput = document.getElementById('rangeEnd');
+            const claudeFilterInput = document.getElementById('claudeCommandFilter');
+
+            if (rangeStartInput) {
+                rangeStartInput.addEventListener('input', function() {
+                    rememberedRangeStart = this.value || null;
+                });
+                rangeStartInput.addEventListener('change', function() {
+                    rememberedRangeStart = this.value || null;
+                });
+            }
+
+            if (rangeEndInput) {
+                rangeEndInput.addEventListener('input', function() {
+                    rememberedRangeEnd = this.value || null;
+                });
+                rangeEndInput.addEventListener('change', function() {
+                    rememberedRangeEnd = this.value || null;
+                });
+            }
+
+            if (claudeFilterInput) {
+                claudeFilterInput.addEventListener('change', function() {
+                    rememberedFilter = this.value || 'all';
+                });
+            }
+
+            // Add listener to close modals when clicking outside
+            window.addEventListener('click', function(event) {
+                const claudeModal = document.getElementById('claudeCommandModal');
+                if (event.target === claudeModal) {
+                    // Save values before closing
+                    if (rangeStartInput) rememberedRangeStart = rangeStartInput.value || null;
+                    if (rangeEndInput) rememberedRangeEnd = rangeEndInput.value || null;
+                    if (claudeFilterInput) rememberedFilter = claudeFilterInput.value || 'all';
+                    claudeModal.style.display = 'none';
+                }
+            });
         });
 
         function restoreSearchMode() {
@@ -2200,6 +2249,12 @@
             const tbody = document.getElementById('spreadsheetBody');
             tbody.innerHTML = '';
 
+            // Update button text based on current state
+            const btn = document.getElementById('toggleAbstractsBtn');
+            if (btn) {
+                btn.innerHTML = showAbstracts ? '👁️ Ocultar Abstracts' : '👁️ Mostrar Abstracts';
+            }
+
             const filteredStudies = getFilteredStudies();
 
             filteredStudies.forEach((study, index) => {
@@ -2572,6 +2627,13 @@
 
         function toggleAllAbstracts() {
             showAbstracts = !showAbstracts;
+
+            // Update button text
+            const btn = document.getElementById('toggleAbstractsBtn');
+            if (btn) {
+                btn.innerHTML = showAbstracts ? '👁️ Ocultar Abstracts' : '👁️ Mostrar Abstracts';
+            }
+
             renderSpreadsheet();
         }
 
@@ -2896,6 +2958,151 @@
             updateResultsCounter();
             
             showToast(`Projeto "${importedProject.name}" importado completamente!`, 'success');
+        }
+
+        // Função para adicionar mais arquivos RIS ao projeto atual
+        async function importAdditionalRIS() {
+            if (!currentProject || studies.length === 0) {
+                alert('Você precisa ter um projeto ativo antes de adicionar mais arquivos RIS!');
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.ris,.nbib,.ciw';
+            input.multiple = true;
+
+            input.onchange = async function(e) {
+                const files = e.target.files;
+                if (!files || files.length === 0) return;
+
+                try {
+                    await processAdditionalFiles(Array.from(files));
+                } catch (error) {
+                    hideLoading();
+                    alert('Erro ao importar arquivos RIS adicionais: ' + error.message);
+                    console.error(error);
+                }
+            };
+
+            input.click();
+        }
+
+        // Process additional files with deduplication workflow
+        async function processAdditionalFiles(files) {
+            showLoading('Carregando novos arquivos...', 'Lendo e processando os arquivos...');
+
+            const newStudiesArray = [];
+            const fileStats = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                updateProgress((i / files.length) * 30);
+
+                const content = await readFileContent(file);
+                const parsedStudies = parseFileContent(content, file.name);
+
+                // Coletar estatísticas
+                const studiesWithYear = parsedStudies.filter(s => s.year && s.year.trim() !== '').length;
+                const studiesWithoutYear = parsedStudies.length - studiesWithYear;
+
+                fileStats.push({
+                    filename: file.name,
+                    total: parsedStudies.length,
+                    withYear: studiesWithYear,
+                    withoutYear: studiesWithoutYear
+                });
+
+                newStudiesArray.push(...parsedStudies);
+            }
+
+            updateProgress(40);
+            await sleep(300);
+
+            // Combine existing studies with new studies for deduplication
+            const combinedStudies = [...studies, ...newStudiesArray];
+
+            // Store in allFilesStudies for deduplication process
+            allFilesStudies = combinedStudies;
+
+            hideLoading();
+
+            // Show confirmation modal with file stats
+            showAdditionalFilesConfirmationModal(fileStats, newStudiesArray.length);
+        }
+
+        function showAdditionalFilesConfirmationModal(fileStats, newArticlesCount) {
+            document.getElementById('totalArticlesLoaded').textContent = newArticlesCount;
+            document.getElementById('totalFilesLoaded').textContent = fileStats.length;
+
+            const listDiv = document.getElementById('filesListConfirmation');
+            listDiv.innerHTML = '';
+
+            fileStats.forEach((stat, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+
+                fileDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <p class="font-semibold text-sm text-gray-800">${stat.filename}</p>
+                            <p class="text-xs text-gray-600 mt-1">
+                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                    ${stat.total} artigos
+                                </span>
+                                ${stat.withYear > 0 ? `
+                                <span class="inline-block bg-green-100 text-green-800 px-2 py-0.5 rounded ml-1">
+                                    ${stat.withYear} com ano
+                                </span>
+                                ` : ''}
+                                ${stat.withoutYear > 0 ? `
+                                <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded ml-1">
+                                    ${stat.withoutYear} sem ano
+                                </span>
+                                ` : ''}
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                listDiv.appendChild(fileDiv);
+            });
+
+            const totalNoYear = fileStats.reduce((sum, f) => sum + f.withoutYear, 0);
+            if (totalNoYear > 0) {
+                document.getElementById('noYearWarning').classList.remove('hidden');
+            } else {
+                document.getElementById('noYearWarning').classList.add('hidden');
+            }
+
+            // Update button text for additional files mode
+            document.getElementById('confirmFilesButton').innerHTML = '✅ Confirmar e Prosseguir para Deduplicação';
+
+            // Mark that we're in additional files mode
+            window.isAddingAdditionalFiles = true;
+
+            document.getElementById('filesConfirmationModal').style.display = 'block';
+        }
+
+        async function proceedFromAdditionalFiles() {
+            closeFilesConfirmationModal();
+
+            showLoading('Analisando duplicados...', `${allFilesStudies.length} artigos totais (existentes + novos). Procurando duplicados por DOI...`);
+            updateProgress(50);
+            await sleep(500);
+
+            doiDuplicates = findDuplicatesByDOI(allFilesStudies);
+
+            updateProgress(100);
+            await sleep(300);
+
+            hideLoading();
+
+            if (doiDuplicates.length > 0) {
+                showDoiDeduplicationModal();
+            } else {
+                proceedToTitleDeduplication();
+            }
         }
 
         function applyImportedDecisions(importedStudies) {
@@ -3839,12 +4046,42 @@
             renderPicoFields();
             document.getElementById('claudeCommandModal').style.display = 'block';
 
-            // Reset filter to "all" and update
-            document.getElementById('claudeCommandFilter').value = 'all';
+            // Restore previously remembered filter or use 'all'
+            const filterElement = document.getElementById('claudeCommandFilter');
+            filterElement.value = rememberedFilter || 'all';
+
+            // Update filter (this may reset range values, so we'll restore them after)
             updateClaudeCommandFilter();
+
+            // Restore previously remembered range values
+            // Use both immediate and delayed execution to ensure values stick
+            const rangeStartEl = document.getElementById('rangeStart');
+            const rangeEndEl = document.getElementById('rangeEnd');
+
+            if (rememberedRangeStart !== null && rememberedRangeStart !== '') {
+                rangeStartEl.value = rememberedRangeStart;
+            }
+            if (rememberedRangeEnd !== null && rememberedRangeEnd !== '') {
+                rangeEndEl.value = rememberedRangeEnd;
+            }
+
+            // Set again with delay to override any resets from updateClaudeCommandFilter
+            setTimeout(() => {
+                if (rememberedRangeStart !== null && rememberedRangeStart !== '') {
+                    rangeStartEl.value = rememberedRangeStart;
+                }
+                if (rememberedRangeEnd !== null && rememberedRangeEnd !== '') {
+                    rangeEndEl.value = rememberedRangeEnd;
+                }
+            }, 100);
         }
 
         function closeClaudeCommandModal() {
+            // Save current values before closing
+            rememberedRangeStart = document.getElementById('rangeStart').value || null;
+            rememberedRangeEnd = document.getElementById('rangeEnd').value || null;
+            rememberedFilter = document.getElementById('claudeCommandFilter').value || 'all';
+
             document.getElementById('claudeCommandModal').style.display = 'none';
         }
 
@@ -3943,6 +4180,9 @@
             const filterValue = document.getElementById('claudeCommandFilter').value;
             const filterInfo = document.getElementById('filterInfo');
 
+            // Save the filter value
+            rememberedFilter = filterValue;
+
             // Get filtered studies
             const filteredStudies = getClaudeCommandFilteredStudies();
 
@@ -3980,12 +4220,16 @@
             filterInfo.classList.add('text-blue-600');
             filterInfo.classList.remove('text-red-600');
 
-            // Update range defaults
-            rangeStart.value = 1;
-            rangeEnd.value = filteredStudies.length;
+            // Update max values but don't reset the range if we have remembered values
             rangeStart.max = filteredStudies.length;
             rangeEnd.max = filteredStudies.length;
             rangeInfo.textContent = `(de ${filteredStudies.length} estudos filtrados)`;
+
+            // Only set default values if there are no remembered values
+            if (!rememberedRangeStart && !rememberedRangeEnd) {
+                rangeStart.value = 1;
+                rangeEnd.value = filteredStudies.length;
+            }
         }
 
         function getClaudeCommandFilteredStudies() {
@@ -4613,7 +4857,7 @@ HERE THE TABLE:
         function loadProject(projectId) {
             const projects = getAllProjects();
             const project = projects.find(p => p.id === projectId);
-            
+
             if (!project) {
                 alert('Projeto não encontrado!');
                 return;
@@ -4626,13 +4870,16 @@ HERE THE TABLE:
             document.getElementById('currentProjectName').textContent = project.name;
             document.getElementById('uploadArea').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
-            
+
             updateStats();
             renderSpreadsheet();
             renderScreeningList();
             updateRangeInfo();
             updateResultsCounter();
-            
+
+            // Switch to screening mode by default
+            switchTab('screening');
+
             closeProjectsModal();
             
             showToast(`Projeto "${project.name}" carregado com sucesso!`, 'success');
@@ -5660,7 +5907,10 @@ HERE THE TABLE:
         }
 
         function proceedFromFilesConfirmation() {
-            if (isSingleFileMode) {
+            // Check if we're adding additional files to existing project
+            if (window.isAddingAdditionalFiles) {
+                proceedFromAdditionalFiles();
+            } else if (isSingleFileMode) {
                 proceedFromSingleFile();
             } else {
                 proceedToDeduplication();
@@ -5711,6 +5961,9 @@ HERE THE TABLE:
             renderScreeningList();
             updateRangeInfo();
             updateResultsCounter();
+
+            // Switch to screening mode by default
+            switchTab('screening');
 
             const projects = getAllProjects();
             const existingIndex = projects.findIndex(p => p.id === currentProject.id);
@@ -6119,62 +6372,146 @@ HERE THE TABLE:
                 });
             }
 
-            // Assign IDs to studies
-            allFilesStudies.forEach((study, index) => {
-                if (!study.id) {
-                    study.id = index + 1;
-                }
-            });
+            // Check if we're adding to existing project
+            const isAddingToExisting = window.isAddingAdditionalFiles && currentProject && studies.length > 0;
 
-            // Now use parseRISFile logic to continue with the app
-            if (!currentProject) {
-                const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
-                if (!projectName) {
-                    alert('É necessário dar um nome ao projeto!');
-                    return;
-                }
-
-                const projectId = generateProjectId();
-                currentProject = {
-                    id: projectId,
-                    name: projectName,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    studies: [],
-                    keywords: keywords,
-                    deduplication: {
-                        doiRemoved: duplicatesRemoved.doi,
-                        titleRemoved: duplicatesRemoved.title,
-                        totalRemoved: duplicatesRemoved.doi + duplicatesRemoved.title
+            if (isAddingToExisting) {
+                // When adding to existing project, preserve decisions
+                // First, identify which studies were already in the project (have IDs)
+                const existingStudiesById = new Map();
+                studies.forEach(study => {
+                    if (study.id) {
+                        existingStudiesById.set(study.id, study);
                     }
-                };
-            }
+                });
 
-            studies = allFilesStudies;
-            currentProject.studies = studies;
+                // Now go through allFilesStudies and preserve decisions for existing ones
+                allFilesStudies.forEach(study => {
+                    if (study.id && existingStudiesById.has(study.id)) {
+                        const existingStudy = existingStudiesById.get(study.id);
+                        // Preserve all decision data
+                        study.included = existingStudy.included;
+                        study.excluded = existingStudy.excluded;
+                        study.decision = existingStudy.decision;
+                        study.reasonExclusion = existingStudy.reasonExclusion;
+                        study.observations = existingStudy.observations;
+                        study.pdfFound = existingStudy.pdfFound;
+                    }
+                });
 
-            document.getElementById('uploadArea').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            updateStats();
-            renderSpreadsheet();
-            renderScreeningList();
-            updateRangeInfo();
-            updateResultsCounter();
+                // Assign IDs only to truly new studies (those without IDs)
+                const maxId = Math.max(...allFilesStudies.filter(s => s.id).map(s => s.id), 0);
+                let nextId = maxId + 1;
+                allFilesStudies.forEach(study => {
+                    if (!study.id) {
+                        study.id = nextId++;
+                    }
+                });
 
-            const projects = getAllProjects();
-            const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+                // Update current project
+                studies = allFilesStudies;
+                currentProject.studies = studies;
+                currentProject.updatedAt = new Date().toISOString();
 
-            if (existingIndex >= 0) {
-                projects[existingIndex] = currentProject;
+                // Update deduplication stats in project
+                if (!currentProject.deduplication) {
+                    currentProject.deduplication = {
+                        doiRemoved: 0,
+                        titleRemoved: 0,
+                        totalRemoved: 0
+                    };
+                }
+                currentProject.deduplication.doiRemoved += duplicatesRemoved.doi;
+                currentProject.deduplication.titleRemoved += duplicatesRemoved.title;
+                currentProject.deduplication.totalRemoved += (duplicatesRemoved.doi + duplicatesRemoved.title);
+
+                // Save and update UI
+                const projects = getAllProjects();
+                const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+                if (existingIndex >= 0) {
+                    projects[existingIndex] = currentProject;
+                }
+                saveProjectsList(projects);
+
+                updateStats();
+                renderSpreadsheet();
+                renderScreeningList();
+                updateRangeInfo();
+                updateResultsCounter();
+
+                // Switch to screening mode by default
+                switchTab('screening');
+
+                const totalRemoved = duplicatesRemoved.doi + duplicatesRemoved.title;
+                showToast(`Arquivos adicionados! ${studies.length} estudos totais (${totalRemoved} duplicados removidos: ${duplicatesRemoved.doi} por DOI, ${duplicatesRemoved.title} por título). Suas decisões anteriores foram preservadas!`, 'success');
+
+                // Reset the flag
+                window.isAddingAdditionalFiles = false;
+                duplicatesRemoved.doi = 0;
+                duplicatesRemoved.title = 0;
+
             } else {
-                projects.push(currentProject);
+                // Original flow for new projects
+                // Assign IDs to studies
+                allFilesStudies.forEach((study, index) => {
+                    if (!study.id) {
+                        study.id = index + 1;
+                    }
+                });
+
+                // Now use parseRISFile logic to continue with the app
+                if (!currentProject) {
+                    const projectName = prompt('Digite o nome do projeto:', 'Revisão Sistemática - ' + new Date().toLocaleDateString());
+                    if (!projectName) {
+                        alert('É necessário dar um nome ao projeto!');
+                        return;
+                    }
+
+                    const projectId = generateProjectId();
+                    currentProject = {
+                        id: projectId,
+                        name: projectName,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        studies: [],
+                        keywords: keywords,
+                        deduplication: {
+                            doiRemoved: duplicatesRemoved.doi,
+                            titleRemoved: duplicatesRemoved.title,
+                            totalRemoved: duplicatesRemoved.doi + duplicatesRemoved.title
+                        }
+                    };
+                }
+
+                studies = allFilesStudies;
+                currentProject.studies = studies;
+
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                updateStats();
+                renderSpreadsheet();
+                renderScreeningList();
+                updateRangeInfo();
+                updateResultsCounter();
+
+                // Switch to screening mode by default
+                switchTab('screening');
+
+                const projects = getAllProjects();
+                const existingIndex = projects.findIndex(p => p.id === currentProject.id);
+
+                if (existingIndex >= 0) {
+                    projects[existingIndex] = currentProject;
+                } else {
+                    projects.push(currentProject);
+                }
+
+                saveProjectsList(projects);
+                document.getElementById('currentProjectName').textContent = currentProject.name;
+
+                const totalRemoved = duplicatesRemoved.doi + duplicatesRemoved.title;
+                showToast(`Projeto iniciado! ${studies.length} estudos únicos (${totalRemoved} duplicados removidos: ${duplicatesRemoved.doi} por DOI, ${duplicatesRemoved.title} por título)`, 'success');
             }
-
-            saveProjectsList(projects);
-            document.getElementById('currentProjectName').textContent = currentProject.name;
-
-            const totalRemoved = duplicatesRemoved.doi + duplicatesRemoved.title;
-            showToast(`Projeto iniciado! ${studies.length} estudos únicos (${totalRemoved} duplicados removidos: ${duplicatesRemoved.doi} por DOI, ${duplicatesRemoved.title} por título)`, 'success');
         }
     </script>
 </body>
