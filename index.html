@@ -1246,6 +1246,7 @@
         let studies = [];
         let currentView = 'spreadsheet';
         let selectedStudies = new Set();
+        let lastClickedStudyId = null;
         let keywords = {
             include: [],
             exclude: [],
@@ -1455,10 +1456,163 @@
                 return parseNBIB(content);
             } else if (filename.endsWith('.ciw') || content.includes('FN Clarivate')) {
                 return parseCIW(content);
+            } else if (detectPubMedAbstract(content)) {
+                // PubMed Abstract format (texto com doi:, PMID:, etc.)
+                return parsePubMedAbstract(content);
             } else {
                 // Default to RIS format
                 return parseRIS(content);
             }
+        }
+
+        // Detect PubMed Abstract format
+        function detectPubMedAbstract(content) {
+            const lines = content.split('\n').slice(0, 50); // Check first 50 lines
+            let hasNumberedStart = false;
+            let hasDOI = false;
+            let hasPMID = false;
+
+            for (const line of lines) {
+                // Check for numbered article start (e.g., "1. ", "2. ")
+                if (/^\d+\.\s+[A-Z]/.test(line.trim())) {
+                    hasNumberedStart = true;
+                }
+                // Check for doi: format
+                if (/^doi:\s+/i.test(line.trim())) {
+                    hasDOI = true;
+                }
+                // Check for PMID: format
+                if (/^PMID:\s+\d+/i.test(line.trim())) {
+                    hasPMID = true;
+                }
+            }
+
+            // If has numbered starts and at least one of DOI/PMID, it's PubMed Abstract
+            return hasNumberedStart && (hasDOI || hasPMID);
+        }
+
+        // Parse PubMed Abstract format using EMPTY LINE boundaries
+        function parsePubMedAbstract(content) {
+            const studies = [];
+            const lines = content.split('\n');
+
+            for (let i = 0; i < lines.length; i++) {
+                const trimmedLine = lines[i].trim();
+
+                // Detect start of article: "1. Journal. 2025..."
+                const articleStart = trimmedLine.match(/^(\d+)\.\s+(.+)/);
+                if (!articleStart || !trimmedLine.match(/\b(19|20)\d{2}\b/)) continue;
+
+                // Extract year and DOI from first line
+                const journalLine = articleStart[2];
+                const yearMatch = journalLine.match(/\b(19|20)\d{2}\b/);
+                const doiMatch = journalLine.match(/doi:\s*(10\.\S+?)\.?\s*$/i);
+
+                const study = {
+                    id: '',
+                    doi: doiMatch ? doiMatch[1] : '',
+                    title: '',
+                    authors: [],
+                    year: yearMatch ? yearMatch[0] : '',
+                    abstract: '',
+                    journal: journalLine,
+                    included: false,
+                    excluded: false,
+                    decision: 'pending'
+                };
+
+                i++; // Move past journal line
+
+                // Find first empty line (marks end of journal section)
+                while (i < lines.length && lines[i].trim()) i++;
+                i++; // Skip the empty line
+
+                // Collect TITLE (all lines until next empty line)
+                let titleLines = [];
+                while (i < lines.length && lines[i].trim()) {
+                    titleLines.push(lines[i].trim());
+                    i++;
+                }
+                study.title = titleLines.join(' ');
+                i++; // Skip empty line after title
+
+                // Collect AUTHORS (all lines until next empty line)
+                let authorLines = [];
+                while (i < lines.length && lines[i].trim()) {
+                    authorLines.push(lines[i].trim());
+                    i++;
+                }
+                // Parse authors from collected lines
+                const authorText = authorLines.join(' ');
+                if (authorText.match(/\(\d+\)/)) {
+                    const authorParts = authorText.replace(/\(\d+\)/g, '').replace(/\(#\)/g, '').split(',');
+                    authorParts.forEach(author => {
+                        const clean = author.trim().replace(/\.$/, '');
+                        if (clean && clean.length > 2) {
+                            study.authors.push(clean);
+                        }
+                    });
+                }
+                i++; // Skip empty line after authors
+
+                // Skip "Author information:" section (all lines until empty line)
+                if (i < lines.length && lines[i].trim().match(/^Author information:/i)) {
+                    while (i < lines.length && lines[i].trim()) i++;
+                    i++; // Skip empty line
+                }
+
+                // Collect ABSTRACT (all lines until empty line or DOI/PMID)
+                let abstractLines = [];
+                while (i < lines.length) {
+                    const line = lines[i].trim();
+
+                    // Stop at DOI/PMID/PMCID/Copyright
+                    if (line.match(/^(DOI:|PMID:|PMCID:|Copyright|©|Conflict of interest)/i)) {
+                        break;
+                    }
+
+                    // Stop at empty line
+                    if (!line) break;
+
+                    // Skip "Erratum for" and "Figure" lines
+                    if (line.match(/^(Erratum for|Figure \[)/i)) {
+                        i++;
+                        continue;
+                    }
+
+                    abstractLines.push(line);
+                    i++;
+                }
+                study.abstract = abstractLines.join(' ');
+
+                // Extract DOI, PMID, PMCID from remaining lines
+                while (i < lines.length) {
+                    const line = lines[i].trim();
+
+                    if (line.match(/^DOI:\s+/i)) {
+                        const m = line.match(/^DOI:\s*(10\.\S+)/i);
+                        if (m && !study.doi) study.doi = m[1];
+                    } else if (line.match(/^PMID:\s+\d+/i)) {
+                        const m = line.match(/^PMID:\s*(\d+)/i);
+                        if (m) study.id = m[1];
+                    } else if (line.match(/^PMCID:\s+/i)) {
+                        const m = line.match(/^PMCID:\s*(.+)/i);
+                        if (m && !study.doi) study.doi = 'PMCID:' + m[1].trim();
+                    }
+
+                    // Stop at next article or end
+                    if (line.match(/^\d+\.\s+.+\b(19|20)\d{2}\b/)) {
+                        i--; // Back up so outer loop catches it
+                        break;
+                    }
+
+                    i++;
+                }
+
+                studies.push(study);
+            }
+
+            return studies;
         }
 
         function parseRIS(content) {
@@ -2186,7 +2340,16 @@
                 }
 
                 card.className = cardClass;
-                card.onclick = () => toggleStudySelection(study.id);
+                card.onclick = (event) => {
+                    if (event.shiftKey && lastClickedStudyId !== null) {
+                        // Shift+Click: Select range from last clicked to current
+                        selectStudyRange(lastClickedStudyId, study.id);
+                    } else {
+                        // Normal click: Toggle single selection
+                        toggleStudySelection(study.id);
+                        lastClickedStudyId = study.id;
+                    }
+                };
 
                 const badge = study.included ? 'badge-included' : (study.excluded ? 'badge-excluded' : 'badge-pending');
                 const badgeText = study.included ? 'Incluído' : (study.excluded ? 'Excluído' : 'Pendente');
@@ -2242,6 +2405,55 @@
             } else {
                 selectedStudies.add(studyId);
             }
+            renderScreeningList();
+            renderStudyDetails();
+        }
+
+        function selectStudyRange(startId, endId) {
+            // Get the filtered studies list (respecting current filters)
+            const filteredStudies = studies.filter(study => {
+                const decision = study.decision || 'pending';
+                const searchTerm = document.getElementById('searchBox')?.value.toLowerCase() || '';
+
+                // Apply decision filter
+                const decisionFilter = document.querySelector('input[name="decisionFilter"]:checked')?.value || 'all';
+                if (decisionFilter !== 'all' && decision !== decisionFilter) {
+                    return false;
+                }
+
+                // Apply search filter
+                if (searchTerm && !study.title.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Find indices of start and end studies in the filtered list
+            const startIndex = filteredStudies.findIndex(s => s.id === startId);
+            const endIndex = filteredStudies.findIndex(s => s.id === endId);
+
+            if (startIndex === -1 || endIndex === -1) {
+                return; // One of the IDs not found
+            }
+
+            // Determine the range (handle both directions)
+            const minIndex = Math.min(startIndex, endIndex);
+            const maxIndex = Math.max(startIndex, endIndex);
+
+            // Check if the clicked study is already selected
+            // If it is, DESELECT the entire range; otherwise SELECT the entire range
+            const shouldSelect = !selectedStudies.has(endId);
+
+            // Apply selection/deselection to all studies in the range
+            for (let i = minIndex; i <= maxIndex; i++) {
+                if (shouldSelect) {
+                    selectedStudies.add(filteredStudies[i].id);
+                } else {
+                    selectedStudies.delete(filteredStudies[i].id);
+                }
+            }
+
             renderScreeningList();
             renderStudyDetails();
         }
