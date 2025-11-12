@@ -385,7 +385,10 @@
         </div>
 
         <div id="uploadArea" class="drag-drop-area rounded-lg p-12 text-center mb-6">
-            <div class="flex justify-end mb-4">
+            <div class="flex justify-end gap-2 mb-4">
+                <button onclick="showCompareReviewersInitial()" class="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition text-sm">
+                    🔄 Comparar Revisores
+                </button>
                 <button onclick="showProjectsModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm">
                     📁 Meus Projetos
                 </button>
@@ -526,6 +529,17 @@
                                 <option value="comp-conflict">⚠️ Conflitos</option>
                                 <option value="comp-pending">⚪ Com Pendências</option>
                             </select>
+
+                            <!-- Reviewer Checkboxes for Spreadsheet Mode -->
+                            <div id="reviewerCheckboxesSpreadsheet" class="hidden">
+                                <details class="bg-gray-50 px-3 py-2 rounded border">
+                                    <summary class="cursor-pointer text-sm font-semibold text-gray-700">👥 Filtrar por Revisores</summary>
+                                    <div id="reviewerCheckboxesSpreadsheetContainer" class="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                                        <!-- Checkboxes will be generated here -->
+                                    </div>
+                                </details>
+                            </div>
+
                             <button onclick="toggleSearchHelp()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm">
                                 ❓ Ajuda
                             </button>
@@ -647,7 +661,15 @@
                                     <option value="comp-conflict">⚠️ Conflitos</option>
                                     <option value="comp-pending">⚪ Com Pendências</option>
                                 </select>
-                                
+
+                                <!-- Reviewer Checkboxes for Screening Mode -->
+                                <div id="reviewerCheckboxesScreening" class="mb-3 hidden">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">👥 Filtrar por Revisores:</label>
+                                    <div id="reviewerCheckboxesScreeningContainer" class="space-y-1 max-h-40 overflow-y-auto bg-gray-50 p-2 rounded border">
+                                        <!-- Checkboxes will be generated here -->
+                                    </div>
+                                </div>
+
                                 <div class="text-sm font-semibold mb-2">
                                     <span class="text-gray-700">Resultados: </span>
                                     <span id="searchCountScreening" class="text-blue-600">0 estudos</span>
@@ -1285,6 +1307,33 @@
         let rememberedRangeStart = null;
         let rememberedRangeEnd = null;
         let rememberedFilter = 'all';
+
+        // Centralized function to get selected reviewers from checkboxes
+        function getSelectedReviewers() {
+            const checkboxes = document.querySelectorAll('.reviewer-checkbox');
+            const selected = [];
+
+            checkboxes.forEach((cb, index) => {
+                if (cb.checked) {
+                    // Extract the reviewer index from the ID
+                    const match = cb.id.match(/reviewer_(?:screening_|spreadsheet_)?(\d+)/);
+                    if (match) {
+                        const reviewerIndex = parseInt(match[1]);
+                        if (!selected.includes(reviewerIndex)) {
+                            selected.push(reviewerIndex);
+                        }
+                    }
+                }
+            });
+
+            // If no reviewers selected, use all (including YOUR decisions)
+            if (selected.length === 0) {
+                // Return all reviewers + 1 for YOUR decisions
+                return Array.from({length: reviewersData.length + 1}, (_, i) => i);
+            }
+
+            return selected.sort((a, b) => a - b);
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             setupDragAndDrop();
@@ -2587,6 +2636,9 @@
                 study.excluded = true;
             }
 
+            // Update comparisonData if in comparison mode
+            updateComparisonDataForStudy(study);
+
             updateStats();
             renderScreeningList();
             renderStudyDetails();
@@ -2610,6 +2662,9 @@
                 study[field] = value;
             }
 
+            // Update comparisonData if in comparison mode
+            updateComparisonDataForStudy(study);
+
             updateStats();
             renderSpreadsheet();
             renderScreeningList();
@@ -2623,6 +2678,48 @@
                 study[field] = value;
                 autoSave();
             }
+        }
+
+        // Update comparisonData when user makes a decision
+        function updateComparisonDataForStudy(study) {
+            if (!comparisonMode || !comparisonData) return;
+
+            // Find the comparison entry for this study
+            const comparison = comparisonData.find(c => c.study.id == study.id);
+            if (!comparison) return;
+
+            // Update YOUR decision (last element in decisions array)
+            const yourDecisionIndex = reviewersData.length;
+            if (comparison.decisions[yourDecisionIndex]) {
+                comparison.decisions[yourDecisionIndex].included = study.included === true;
+                comparison.decisions[yourDecisionIndex].excluded = study.excluded === true;
+                comparison.decisions[yourDecisionIndex].reasonExclusion = study.reasonExclusion || '';
+            }
+
+            // Recalculate consensus statistics for this study
+            const decisions = comparison.decisions;
+            const includeCount = decisions.filter(d => d.included === true).length;
+            const excludeCount = decisions.filter(d => d.excluded === true).length;
+            const pendingCount = decisions.filter(d => d.included !== true && d.excluded !== true).length;
+            const allIncluded = decisions.every(d => d.included === true);
+            const allExcluded = decisions.every(d => d.excluded === true);
+            const fullAgreement = allIncluded || allExcluded;
+            // Conflito = discordância real entre incluir e excluir (não conta pendências)
+            const hasConflict = includeCount > 0 && excludeCount > 0;
+            const majorityInclude = includeCount > (decisions.length / 2);
+            const majorityExclude = excludeCount > (decisions.length / 2);
+
+            // Update comparison object
+            comparison.includeCount = includeCount;
+            comparison.excludeCount = excludeCount;
+            comparison.pendingCount = pendingCount;
+            comparison.fullAgreement = fullAgreement;
+            comparison.hasConflict = hasConflict;
+            comparison.allIncluded = allIncluded;
+            comparison.allExcluded = allExcluded;
+            comparison.majorityInclude = majorityInclude;
+            comparison.majorityExclude = majorityExclude;
+            comparison.status = allIncluded ? 'full-include' : (allExcluded ? 'full-exclude' : (hasConflict ? 'conflict' : 'pending'));
         }
 
         function toggleAllAbstracts() {
@@ -2647,33 +2744,42 @@
             const filter = filterSelect.value;
             let filtered = studies;
 
-            if (filter === 'included') {
-                filtered = studies.filter(s => s.included);
-            } else if (filter === 'excluded') {
-                filtered = studies.filter(s => s.excluded);
-            } else if (filter === 'pending') {
-                filtered = studies.filter(s => !s.included && !s.excluded);
-            }
-
             // Aplica filtros de comparação se estiver em modo comparação
             if (comparisonMode && comparisonData) {
                 const compFilterSelect = currentView === 'spreadsheet'
                     ? document.getElementById('comparisonMainFilter')
                     : document.getElementById('comparisonScreeningFilter');
 
+                // Se há um filtro de comparação ativo, aplica PRIMEIRO aos estudos completos
                 if (compFilterSelect && compFilterSelect.value !== 'comp-all') {
                     const compFilter = compFilterSelect.value;
                     const compIds = new Set();
 
+                    // Use centralized function to get selected reviewers
+                    const selectedReviewers = getSelectedReviewers();
+
                     comparisonData.forEach(comp => {
+                        // Only consider selected reviewers
+                        const selectedDecisions = comp.decisions.filter((d, i) =>
+                            selectedReviewers.includes(i)
+                        );
+
+                        const includeCount = selectedDecisions.filter(d => d.included === true).length;
+                        const excludeCount = selectedDecisions.filter(d => d.excluded === true).length;
+                        const pendingCount = selectedDecisions.filter(d => d.included !== true && d.excluded !== true).length;
+                        const allIncluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.included === true);
+                        const allExcluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.excluded === true);
+                        // Conflito = discordância real entre incluir e excluir (não conta pendências)
+                        const hasConflict = includeCount > 0 && excludeCount > 0;
+
                         let matches = false;
-                        if (compFilter === 'comp-consensus-include' && comp.allIncluded) {
+                        if (compFilter === 'comp-consensus-include' && allIncluded) {
                             matches = true;
-                        } else if (compFilter === 'comp-consensus-exclude' && comp.allExcluded) {
+                        } else if (compFilter === 'comp-consensus-exclude' && allExcluded) {
                             matches = true;
-                        } else if (compFilter === 'comp-conflict' && comp.hasConflict) {
+                        } else if (compFilter === 'comp-conflict' && hasConflict) {
                             matches = true;
-                        } else if (compFilter === 'comp-pending' && comp.pendingCount > 0) {
+                        } else if (compFilter === 'comp-pending' && pendingCount > 0) {
                             matches = true;
                         }
 
@@ -2682,8 +2788,19 @@
                         }
                     });
 
+                    // Aplica o filtro de comparação primeiro
                     filtered = filtered.filter(s => compIds.has(s.id));
                 }
+            }
+
+            // Depois aplica o filtro principal (suas decisões) se não houver filtro de comparação ativo
+            // Ou se houver, aplica como filtro adicional
+            if (filter === 'included') {
+                filtered = filtered.filter(s => s.included);
+            } else if (filter === 'excluded') {
+                filtered = filtered.filter(s => s.excluded);
+            } else if (filter === 'pending') {
+                filtered = filtered.filter(s => !s.included && !s.excluded);
             }
 
             if (currentSearchQuery && searchFilteredStudies.length >= 0) {
@@ -2799,10 +2916,31 @@
                 return;
             }
 
+            // Get filtered studies based on current filters
+            const filteredStudies = getFilteredStudies();
+
+            // Show confirmation with count
+            const totalStudies = studies.length;
+            const filteredCount = filteredStudies.length;
+
+            if (filteredCount < totalStudies) {
+                const proceed = confirm(
+                    `📄 Exportação RIS com Filtros Ativos\n\n` +
+                    `Você tem filtros ativos que reduzem os estudos exibidos.\n\n` +
+                    `📝 Total de estudos no projeto: ${totalStudies}\n` +
+                    `✅ Estudos que serão exportados: ${filteredCount}\n\n` +
+                    `Deseja prosseguir com a exportação apenas dos estudos filtrados?`
+                );
+
+                if (!proceed) {
+                    return;
+                }
+            }
+
             // Generate RIS format
             let risContent = '';
 
-            studies.forEach(study => {
+            filteredStudies.forEach(study => {
                 // Type of reference (always JOUR for journal article)
                 risContent += 'TY  - JOUR\n';
 
@@ -2869,7 +3007,7 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            showToast(`${studies.length} estudos exportados em formato RIS!`, 'success');
+            showToast(`✅ ${filteredCount} estudos exportados em formato RIS!`, 'success');
         }
 
         function importDecisions() {
@@ -3125,11 +3263,32 @@
         }
 
         function exportSpreadsheet() {
-            const data = studies.map(s => {
-                const authorText = s.authors && s.authors.length > 0 
+            // Get filtered studies based on current filters
+            const filteredStudies = getFilteredStudies();
+
+            // Show confirmation with count
+            const totalStudies = studies.length;
+            const filteredCount = filteredStudies.length;
+
+            if (filteredCount < totalStudies) {
+                const proceed = confirm(
+                    `📊 Exportação com Filtros Ativos\n\n` +
+                    `Você tem filtros ativos que reduzem os estudos exibidos.\n\n` +
+                    `📝 Total de estudos no projeto: ${totalStudies}\n` +
+                    `✅ Estudos que serão exportados: ${filteredCount}\n\n` +
+                    `Deseja prosseguir com a exportação apenas dos estudos filtrados?`
+                );
+
+                if (!proceed) {
+                    return;
+                }
+            }
+
+            const data = filteredStudies.map(s => {
+                const authorText = s.authors && s.authors.length > 0
                     ? s.authors[0] + (s.authors.length > 1 ? ' et al.' : '')
                     : '';
-                const studyId = authorText && s.year 
+                const studyId = authorText && s.year
                     ? `${authorText}, ${s.year}`
                     : s.id;
 
@@ -3152,6 +3311,8 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Studies');
             XLSX.writeFile(wb, `systematic_review_${Date.now()}.xlsx`);
+
+            showToast(`✅ ${filteredCount} estudos exportados com sucesso!`, 'success');
         }
 
         function copyTableToClipboard() {
@@ -3208,14 +3369,285 @@
         }
 
         function showCompareModal() {
-            document.getElementById('compareModal').style.display = 'block';
+            // Check if there's an active project
+            if (currentProject && studies.length > 0) {
+                // Ask user what they want to do
+                const choice = confirm(
+                    '🔄 Modo de Comparação de Revisores\n\n' +
+                    'Você tem um projeto ativo com decisões já feitas.\n\n' +
+                    '✅ Clique OK para COMPARAR os revisores com suas decisões atuais\n' +
+                    '   (Suas decisões serão incluídas na comparação)\n\n' +
+                    '❌ Clique CANCELAR para VER APENAS os revisores em um novo projeto\n' +
+                    '   (Suas decisões atuais não serão incluídas)'
+                );
+
+                if (choice) {
+                    // User wants to compare with their current decisions
+                    showCompareWithMyDecisions();
+                } else {
+                    // User wants to view only reviewers in a new project
+                    document.getElementById('compareModal').style.display = 'block';
+                }
+            } else {
+                // No active project, just show the modal
+                document.getElementById('compareModal').style.display = 'block';
+            }
+        }
+
+        function showCompareWithMyDecisions() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.multiple = true;
+
+            input.onchange = async function(e) {
+                const files = e.target.files;
+                if (files.length < 1) {
+                    alert('Selecione pelo menos 1 arquivo de revisor para comparar com suas decisões!');
+                    return;
+                }
+
+                await compareWithMyDecisions(Array.from(files));
+            };
+
+            input.click();
+        }
+
+        async function compareWithMyDecisions(files) {
+            // Ask for reviewer names for each file
+            const reviewerNames = [];
+            for (let i = 0; i < files.length; i++) {
+                const defaultName = files[i].name.replace('.json', '').replace(/_/g, ' ');
+                const reviewerName = prompt(
+                    `Digite o nome do revisor para o arquivo ${i + 1} de ${files.length}:\n\n` +
+                    `Arquivo: ${files[i].name}`,
+                    defaultName
+                );
+
+                if (!reviewerName) {
+                    alert('Você precisa fornecer um nome para cada revisor!');
+                    return;
+                }
+
+                reviewerNames.push(reviewerName.trim());
+            }
+
+            // Ask for your name (to appear in comparisons)
+            const myName = prompt(
+                'Digite o seu nome (para identificar suas decisões na comparação):',
+                currentProject.name || 'Seu Nome'
+            );
+
+            if (!myName) {
+                alert('Você precisa fornecer seu nome!');
+                return;
+            }
+
+            newReviewerName = myName.trim();
+
+            // Load reviewer files
+            const promises = Array.from(files).map((file, index) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            resolve({
+                                reviewer: reviewerNames[index],
+                                studies: data.studies
+                            });
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            });
+
+            try {
+                const data = await Promise.all(promises);
+
+                // Add current user's decisions as a reviewer
+                const myDecisions = {
+                    reviewer: myName.trim(),
+                    studies: studies.map(s => ({
+                        ...s,
+                        included: s.included || false,
+                        excluded: s.excluded || false,
+                        reasonExclusion: s.reasonExclusion || ''
+                    }))
+                };
+
+                // Combine other reviewers with your decisions
+                reviewersData = [...data, myDecisions];
+
+                // Don't reset decisions - keep current ones
+                // But prepare for new reviewer decisions (which is you)
+                newReviewerDecisions = {};
+                studies.forEach(study => {
+                    newReviewerDecisions[study.id] = {
+                        included: study.included || false,
+                        excluded: study.excluded || false,
+                        reasonExclusion: study.reasonExclusion || ''
+                    };
+                });
+
+                displayEnhancedComparison();
+                comparisonMode = true;
+
+                // Show comparison controls
+                document.getElementById('comparisonModeIndicator').classList.remove('hidden');
+                document.getElementById('comparisonMainFilter').classList.remove('hidden');
+                document.getElementById('comparisonScreeningFilter').classList.remove('hidden');
+                document.getElementById('saveNewReviewerDecisionsBtn').classList.remove('hidden');
+
+                // Update views
+                applyFilters();
+                renderScreeningList();
+                renderSpreadsheet();
+
+                alert(`✅ Comparação iniciada!\n\n👤 Seu nome: ${myName}\n📊 ${data.length} outro(s) revisor(es) carregados\n📝 ${studies.length} artigos\n\n💡 Suas decisões atuais estão incluídas na comparação.\nVocê pode continuar fazendo decisões e salvar quando terminar.`);
+            } catch (error) {
+                alert('Erro ao carregar arquivos: ' + error.message);
+            }
         }
 
         function closeCompareModal() {
             document.getElementById('compareModal').style.display = 'none';
         }
 
-        function compareReviewers() {
+        // Function to start comparison from initial screen
+        function showCompareReviewersInitial() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.multiple = true;
+
+            input.onchange = async function(e) {
+                const files = e.target.files;
+                if (files.length < 2) {
+                    alert('Selecione pelo menos 2 arquivos de revisores para comparar!');
+                    return;
+                }
+
+                await compareReviewersFromInitial(Array.from(files));
+            };
+
+            input.click();
+        }
+
+        async function compareReviewersFromInitial(files) {
+            // Ask for reviewer names for each file
+            const reviewerNames = [];
+            for (let i = 0; i < files.length; i++) {
+                const defaultName = files[i].name.replace('.json', '').replace(/_/g, ' ');
+                const reviewerName = prompt(
+                    `Digite o nome do revisor para o arquivo ${i + 1} de ${files.length}:\n\n` +
+                    `Arquivo: ${files[i].name}`,
+                    defaultName
+                );
+
+                if (!reviewerName) {
+                    alert('Você precisa fornecer um nome para cada revisor!');
+                    return;
+                }
+
+                reviewerNames.push(reviewerName.trim());
+            }
+
+            // Ask for your name
+            const myName = prompt(
+                'Digite o seu nome (você também vai fazer decisões neste projeto):',
+                'Seu Nome'
+            );
+
+            if (!myName) {
+                alert('Você precisa fornecer seu nome!');
+                return;
+            }
+
+            newReviewerName = myName.trim();
+
+            // Load reviewer files
+            const promises = Array.from(files).map((file, index) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            resolve({
+                                reviewer: reviewerNames[index],
+                                studies: data.studies
+                            });
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+            });
+
+            try {
+                const data = await Promise.all(promises);
+                reviewersData = data;
+
+                // Merge studies from all reviewers
+                const allStudyIds = new Set();
+                data.forEach(reviewer => {
+                    reviewer.studies.forEach(study => allStudyIds.add(study.id));
+                });
+
+                // Use studies from first reviewer as base, reset decisions
+                studies = data[0].studies.map(study => {
+                    return {
+                        ...study,
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: '',
+                        observations: study.observations || ''
+                    };
+                });
+
+                // Initialize your decisions as empty
+                newReviewerDecisions = {};
+                studies.forEach(study => {
+                    newReviewerDecisions[study.id] = {
+                        included: false,
+                        excluded: false,
+                        reasonExclusion: ''
+                    };
+                });
+
+                displayEnhancedComparison();
+                comparisonMode = true;
+
+                // Hide upload area, show main app
+                document.getElementById('uploadArea').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+
+                // Show comparison controls
+                document.getElementById('comparisonModeIndicator').classList.remove('hidden');
+                document.getElementById('comparisonMainFilter').classList.remove('hidden');
+                document.getElementById('comparisonScreeningFilter').classList.remove('hidden');
+                document.getElementById('saveNewReviewerDecisionsBtn').classList.remove('hidden');
+
+                // Update views
+                updateStats();
+                renderSpreadsheet();
+                renderScreeningList();
+                updateRangeInfo();
+                updateResultsCounter();
+
+                // Switch to screening mode
+                switchTab('screening');
+
+                alert(`✅ Sessão de comparação iniciada!\n\n👤 Seu nome: ${newReviewerName}\n📊 ${reviewersData.length} revisores carregados\n📝 ${studies.length} artigos para revisar\n\n💡 Você verá as decisões dos outros revisores e poderá fazer suas próprias decisões.\n\n✅ Quando terminar, clique em "Salvar Minhas Decisões" para adicionar suas escolhas à comparação.`);
+            } catch (error) {
+                alert('Erro ao carregar arquivos: ' + error.message);
+            }
+        }
+
+        async function compareReviewers() {
             const filesInput = document.getElementById('compareFiles');
             const files = filesInput.files;
             const nameInput = document.getElementById('newReviewerNameInput').value.trim();
@@ -3232,14 +3664,32 @@
                 newReviewerName = 'Novo Revisor';
             }
 
-            const promises = Array.from(files).map(file => {
+            // Ask for reviewer names for each file
+            const reviewerNames = [];
+            for (let i = 0; i < files.length; i++) {
+                const defaultName = files[i].name.replace('.json', '').replace(/_/g, ' ');
+                const reviewerName = prompt(
+                    `Digite o nome do revisor para o arquivo ${i + 1} de ${files.length}:\n\n` +
+                    `Arquivo: ${files[i].name}`,
+                    defaultName
+                );
+
+                if (!reviewerName) {
+                    alert('Você precisa fornecer um nome para cada revisor!');
+                    return;
+                }
+
+                reviewerNames.push(reviewerName.trim());
+            }
+
+            const promises = Array.from(files).map((file, index) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         try {
                             const data = JSON.parse(e.target.result);
                             resolve({
-                                reviewer: data.reviewer || data.projectName || file.name.replace('.json', ''),
+                                reviewer: reviewerNames[index], // Use the name provided by user
                                 studies: data.studies
                             });
                         } catch (error) {
@@ -3307,24 +3757,35 @@
         function displayEnhancedComparison() {
             // Calculate comprehensive comparison data
             const studyComparisons = studies.map(study => {
+                // Get decisions from all reviewers
                 const decisions = reviewersData.map(r => {
                     const reviewerStudy = r.studies.find(s => s.id == study.id);
                     return {
                         reviewer: r.reviewer,
-                        included: reviewerStudy ? reviewerStudy.included : false,
-                        excluded: reviewerStudy ? reviewerStudy.excluded : false,
+                        included: reviewerStudy ? (reviewerStudy.included === true) : false,
+                        excluded: reviewerStudy ? (reviewerStudy.excluded === true) : false,
                         reasonExclusion: reviewerStudy ? reviewerStudy.reasonExclusion : ''
                     };
                 });
 
-                const includeCount = decisions.filter(d => d.included).length;
-                const excludeCount = decisions.filter(d => d.excluded).length;
-                const pendingCount = decisions.filter(d => !d.included && !d.excluded).length;
+                // Add YOUR current decisions as a reviewer
+                decisions.push({
+                    reviewer: newReviewerName,
+                    included: study.included === true,
+                    excluded: study.excluded === true,
+                    reasonExclusion: study.reasonExclusion || ''
+                });
 
-                const allIncluded = decisions.every(d => d.included);
-                const allExcluded = decisions.every(d => d.excluded);
+                const includeCount = decisions.filter(d => d.included === true).length;
+                const excludeCount = decisions.filter(d => d.excluded === true).length;
+                const pendingCount = decisions.filter(d => d.included !== true && d.excluded !== true).length;
+
+                const allIncluded = decisions.every(d => d.included === true);
+                const allExcluded = decisions.every(d => d.excluded === true);
                 const fullAgreement = allIncluded || allExcluded;
-                
+                // Conflito = discordância real entre incluir e excluir (não conta pendências)
+                const hasConflict = includeCount > 0 && excludeCount > 0;
+
                 const majorityInclude = includeCount > (decisions.length / 2);
                 const majorityExclude = excludeCount > (decisions.length / 2);
 
@@ -3335,12 +3796,12 @@
                     excludeCount: excludeCount,
                     pendingCount: pendingCount,
                     fullAgreement: fullAgreement,
-                    hasConflict: !fullAgreement,
+                    hasConflict: hasConflict,
                     allIncluded: allIncluded,
                     allExcluded: allExcluded,
                     majorityInclude: majorityInclude,
                     majorityExclude: majorityExclude,
-                    status: allIncluded ? 'full-include' : (allExcluded ? 'full-exclude' : 'conflict')
+                    status: allIncluded ? 'full-include' : (allExcluded ? 'full-exclude' : (hasConflict ? 'conflict' : 'pending'))
                 };
             });
 
@@ -3453,25 +3914,139 @@
         }
 
         function generateReviewerCheckboxes() {
+            // Generate for comparison modal
             const container = document.getElementById('reviewerCheckboxes');
-            container.innerHTML = '';
+            if (container) {
+                container.innerHTML = '';
+                reviewersData.forEach((reviewer, index) => {
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
+                    checkbox.innerHTML = `
+                        <input type="checkbox"
+                               id="reviewer_${index}"
+                               value="${index}"
+                               checked
+                               class="reviewer-checkbox"
+                               onchange="onReviewerCheckboxChange(this)">
+                        <label for="reviewer_${index}" class="text-sm cursor-pointer">${reviewer.reviewer}</label>
+                    `;
+                    container.appendChild(checkbox);
+                });
 
-            reviewersData.forEach((reviewer, index) => {
-                const checkbox = document.createElement('div');
-                checkbox.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
-                checkbox.innerHTML = `
-                    <input type="checkbox" 
-                           id="reviewer_${index}" 
-                           value="${index}"
+                // Add YOUR checkbox
+                const yourCheckbox = document.createElement('div');
+                yourCheckbox.className = 'flex items-center gap-2 p-2 bg-blue-50 rounded border-2 border-blue-300';
+                yourCheckbox.innerHTML = `
+                    <input type="checkbox"
+                           id="reviewer_${reviewersData.length}"
+                           value="${reviewersData.length}"
                            checked
-                           class="reviewer-checkbox">
-                    <label for="reviewer_${index}" class="text-sm cursor-pointer">${reviewer.reviewer}</label>
+                           class="reviewer-checkbox"
+                           onchange="onReviewerCheckboxChange(this)">
+                    <label for="reviewer_${reviewersData.length}" class="text-sm cursor-pointer font-semibold text-blue-700">👤 ${newReviewerName} (Você)</label>
                 `;
-                container.appendChild(checkbox);
-            });
+                container.appendChild(yourCheckbox);
+            }
 
-            // Select all by default
-            selectedReviewersForExport = reviewersData.map((r, i) => i);
+            // Generate for screening mode
+            const screeningContainer = document.getElementById('reviewerCheckboxesScreeningContainer');
+            if (screeningContainer) {
+                screeningContainer.innerHTML = '';
+                reviewersData.forEach((reviewer, index) => {
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'flex items-center gap-1.5';
+                    checkbox.innerHTML = `
+                        <input type="checkbox"
+                               id="reviewer_screening_${index}"
+                               value="${index}"
+                               checked
+                               class="reviewer-checkbox"
+                               onchange="onReviewerCheckboxChange(this)">
+                        <label for="reviewer_screening_${index}" class="text-xs cursor-pointer">${reviewer.reviewer}</label>
+                    `;
+                    screeningContainer.appendChild(checkbox);
+                });
+
+                // Add YOUR checkbox
+                const yourCheckbox = document.createElement('div');
+                yourCheckbox.className = 'flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded';
+                yourCheckbox.innerHTML = `
+                    <input type="checkbox"
+                           id="reviewer_screening_${reviewersData.length}"
+                           value="${reviewersData.length}"
+                           checked
+                           class="reviewer-checkbox"
+                           onchange="onReviewerCheckboxChange(this)">
+                    <label for="reviewer_screening_${reviewersData.length}" class="text-xs cursor-pointer font-semibold text-blue-700">👤 ${newReviewerName}</label>
+                `;
+                screeningContainer.appendChild(yourCheckbox);
+                document.getElementById('reviewerCheckboxesScreening').classList.remove('hidden');
+            }
+
+            // Generate for spreadsheet mode
+            const spreadsheetContainer = document.getElementById('reviewerCheckboxesSpreadsheetContainer');
+            if (spreadsheetContainer) {
+                spreadsheetContainer.innerHTML = '';
+                reviewersData.forEach((reviewer, index) => {
+                    const checkbox = document.createElement('div');
+                    checkbox.className = 'flex items-center gap-1.5';
+                    checkbox.innerHTML = `
+                        <input type="checkbox"
+                               id="reviewer_spreadsheet_${index}"
+                               value="${index}"
+                               checked
+                               class="reviewer-checkbox"
+                               onchange="onReviewerCheckboxChange(this)">
+                        <label for="reviewer_spreadsheet_${index}" class="text-xs cursor-pointer">${reviewer.reviewer}</label>
+                    `;
+                    spreadsheetContainer.appendChild(checkbox);
+                });
+
+                // Add YOUR checkbox
+                const yourCheckbox = document.createElement('div');
+                yourCheckbox.className = 'flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded';
+                yourCheckbox.innerHTML = `
+                    <input type="checkbox"
+                           id="reviewer_spreadsheet_${reviewersData.length}"
+                           value="${reviewersData.length}"
+                           checked
+                           class="reviewer-checkbox"
+                           onchange="onReviewerCheckboxChange(this)">
+                    <label for="reviewer_spreadsheet_${reviewersData.length}" class="text-xs cursor-pointer font-semibold text-blue-700">👤 ${newReviewerName}</label>
+                `;
+                spreadsheetContainer.appendChild(yourCheckbox);
+                document.getElementById('reviewerCheckboxesSpreadsheet').classList.remove('hidden');
+            }
+
+            // Select all by default (including YOUR decisions)
+            selectedReviewersForExport = Array.from({length: reviewersData.length + 1}, (_, i) => i);
+        }
+
+        function onReviewerCheckboxChange(changedCheckbox) {
+            // Get the reviewer index from the changed checkbox
+            if (changedCheckbox) {
+                const match = changedCheckbox.id.match(/reviewer_(?:screening_|spreadsheet_)?(\d+)/);
+                if (match) {
+                    const reviewerIndex = match[1];
+                    const isChecked = changedCheckbox.checked;
+
+                    // Sync all checkboxes with the same reviewer index
+                    const allCheckboxes = document.querySelectorAll('.reviewer-checkbox');
+                    allCheckboxes.forEach(cb => {
+                        const cbMatch = cb.id.match(/reviewer_(?:screening_|spreadsheet_)?(\d+)/);
+                        if (cbMatch && cbMatch[1] === reviewerIndex) {
+                            cb.checked = isChecked;
+                        }
+                    });
+                }
+            }
+
+            // Update the comparison filter view
+            applyComparisonFilter();
+
+            // Also update the main views (triagem and planilha)
+            renderScreeningList();
+            renderSpreadsheet();
         }
 
         function applyReviewerSelection() {
@@ -3519,29 +4094,66 @@
             const filterValue = document.getElementById('comparisonFilterSelect').value;
             comparisonFilter = filterValue;
 
-            let filteredComparisons = comparisonData;
+            // Use centralized function to get selected reviewers
+            selectedReviewersForExport = getSelectedReviewers();
 
+            // Filter comparisons based on selected reviewers
+            let filteredComparisons = comparisonData.map(comp => {
+                // Only consider selected reviewers
+                const selectedDecisions = comp.decisions.filter((d, i) =>
+                    selectedReviewersForExport.includes(i)
+                );
+
+                const includeCount = selectedDecisions.filter(d => d.included).length;
+                const excludeCount = selectedDecisions.filter(d => d.excluded).length;
+                const pendingCount = selectedDecisions.filter(d => !d.included && !d.excluded).length;
+                const allIncluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.included);
+                const allExcluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.excluded);
+                const hasConflict = !allIncluded && !allExcluded && (includeCount > 0 || excludeCount > 0);
+
+                return {
+                    ...comp,
+                    selectedDecisions: selectedDecisions,
+                    selectedIncludeCount: includeCount,
+                    selectedExcludeCount: excludeCount,
+                    selectedPendingCount: pendingCount,
+                    selectedAllIncluded: allIncluded,
+                    selectedAllExcluded: allExcluded,
+                    selectedHasConflict: hasConflict,
+                    selectedFullAgreement: allIncluded || allExcluded
+                };
+            });
+
+            // Apply status filter based on selected reviewers
             switch(filterValue) {
                 case 'full-agreement':
-                    filteredComparisons = comparisonData.filter(c => c.fullAgreement);
+                    filteredComparisons = filteredComparisons.filter(c => c.selectedFullAgreement);
                     break;
                 case 'full-include':
-                    filteredComparisons = comparisonData.filter(c => c.allIncluded);
+                    filteredComparisons = filteredComparisons.filter(c => c.selectedAllIncluded);
                     break;
                 case 'full-exclude':
-                    filteredComparisons = comparisonData.filter(c => c.allExcluded);
+                    filteredComparisons = filteredComparisons.filter(c => c.selectedAllExcluded);
                     break;
                 case 'conflicts':
-                    filteredComparisons = comparisonData.filter(c => c.hasConflict);
+                    filteredComparisons = filteredComparisons.filter(c => c.selectedHasConflict);
                     break;
                 case 'majority-include':
-                    filteredComparisons = comparisonData.filter(c => c.majorityInclude && !c.fullAgreement);
+                    filteredComparisons = filteredComparisons.filter(c =>
+                        c.selectedIncludeCount > (c.selectedDecisions.length / 2) && !c.selectedFullAgreement
+                    );
                     break;
                 case 'majority-exclude':
-                    filteredComparisons = comparisonData.filter(c => c.majorityExclude && !c.fullAgreement);
+                    filteredComparisons = filteredComparisons.filter(c =>
+                        c.selectedExcludeCount > (c.selectedDecisions.length / 2) && !c.selectedFullAgreement
+                    );
+                    break;
+                case 'with-pending':
+                    filteredComparisons = filteredComparisons.filter(c => c.selectedPendingCount > 0);
                     break;
                 default:
-                    filteredComparisons = comparisonData;
+                    // 'all' - no additional filtering
+                    break;
             }
 
             renderDetailedComparisonTable(filteredComparisons);
@@ -3773,13 +4385,29 @@
             const comparison = comparisonData.find(c => c.study.id == study.id);
             if (!comparison) return '';
 
-            if (comparison.allIncluded) {
+            // Use centralized function to get selected reviewers
+            const selectedReviewers = getSelectedReviewers();
+
+            // Filter decisions to only show selected reviewers
+            const selectedDecisions = comparison.decisions.filter((d, i) =>
+                selectedReviewers.includes(i)
+            );
+
+            const includeCount = selectedDecisions.filter(d => d.included === true).length;
+            const excludeCount = selectedDecisions.filter(d => d.excluded === true).length;
+            const pendingCount = selectedDecisions.filter(d => d.included !== true && d.excluded !== true).length;
+            const allIncluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.included === true);
+            const allExcluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.excluded === true);
+            // Conflito = discordância real entre incluir e excluir (não conta pendências)
+            const hasConflict = includeCount > 0 && excludeCount > 0;
+
+            if (allIncluded) {
                 return 'consensus-include';
-            } else if (comparison.allExcluded) {
+            } else if (allExcluded) {
                 return 'consensus-exclude';
-            } else if (comparison.hasConflict) {
+            } else if (hasConflict) {
                 return 'consensus-conflict';
-            } else if (comparison.pendingCount > 0) {
+            } else if (pendingCount > 0) {
                 return 'consensus-pending';
             }
 
@@ -3792,14 +4420,30 @@
             const comparison = comparisonData.find(c => c.study.id == study.id);
             if (!comparison) return null;
 
+            // Use centralized function to get selected reviewers
+            const selectedReviewers = getSelectedReviewers();
+
+            // Filter decisions to only show selected reviewers
+            const selectedDecisions = comparison.decisions.filter((d, i) =>
+                selectedReviewers.includes(i)
+            );
+
+            const includeCount = selectedDecisions.filter(d => d.included === true).length;
+            const excludeCount = selectedDecisions.filter(d => d.excluded === true).length;
+            const pendingCount = selectedDecisions.filter(d => d.included !== true && d.excluded !== true).length;
+            const allIncluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.included === true);
+            const allExcluded = selectedDecisions.length > 0 && selectedDecisions.every(d => d.excluded === true);
+            // Conflito = discordância real entre incluir e excluir (não conta pendências)
+            const hasConflict = includeCount > 0 && excludeCount > 0;
+
             return {
-                includeCount: comparison.includeCount,
-                excludeCount: comparison.excludeCount,
-                pendingCount: comparison.pendingCount,
-                allIncluded: comparison.allIncluded,
-                allExcluded: comparison.allExcluded,
-                hasConflict: comparison.hasConflict,
-                decisions: comparison.decisions
+                includeCount: includeCount,
+                excludeCount: excludeCount,
+                pendingCount: pendingCount,
+                allIncluded: allIncluded,
+                allExcluded: allExcluded,
+                hasConflict: hasConflict,
+                decisions: selectedDecisions  // Return only selected reviewers' decisions
             };
         }
 
@@ -4658,7 +5302,7 @@ HERE THE TABLE:
             let appliedCount = 0;
             matchedDecisions.forEach(decision => {
                 const study = decision.matchedStudy;
-                
+
                 if (decision.decision === 'include') {
                     study.included = true;
                     study.excluded = false;
@@ -4673,6 +5317,10 @@ HERE THE TABLE:
                         study.reasonExclusion = decision.reason;
                     }
                 }
+
+                // Update comparisonData if in comparison mode
+                updateComparisonDataForStudy(study);
+
                 appliedCount++;
             });
 
