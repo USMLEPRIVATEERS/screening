@@ -6194,53 +6194,76 @@ HERE THE TABLE:
             return searchableText.includes(phrase.toLowerCase());
         }
 
-        // Helper function to detect differences between studies in a group
-        function analyzeGroupDifferences(group) {
-            const differences = {
-                title: false,
-                authors: false,
-                doi: false,
-                year: false,
-                journal: false
+        // Color palette for different values
+        const HIGHLIGHT_COLORS = [
+            { bg: '#fef3c7', text: '#92400e', class: 'highlight-color-1' },  // Yellow
+            { bg: '#dbeafe', text: '#1e40af', class: 'highlight-color-2' },  // Blue
+            { bg: '#fce7f3', text: '#9f1239', class: 'highlight-color-3' },  // Pink
+            { bg: '#d1fae5', text: '#065f46', class: 'highlight-color-4' },  // Green
+            { bg: '#e0e7ff', text: '#3730a3', class: 'highlight-color-5' },  // Indigo
+            { bg: '#fed7aa', text: '#9a3412', class: 'highlight-color-6' },  // Orange
+            { bg: '#fce4ec', text: '#880e4f', class: 'highlight-color-7' },  // Deep pink
+            { bg: '#c8e6c9', text: '#1b5e20', class: 'highlight-color-8' }   // Light green
+        ];
+
+        // Analyze group and create color mappings for each field
+        function analyzeGroupWithColorMapping(group) {
+            const colorMaps = {
+                title: new Map(),
+                authors: new Map(),
+                doi: new Map(),
+                year: new Map(),
+                journal: new Map()
             };
 
-            if (group.items.length < 2) return differences;
+            if (group.items.length < 2) return colorMaps;
 
-            // Check title differences
-            const firstTitle = (group.items[0].title || '').toLowerCase().trim();
-            differences.title = group.items.some(item =>
-                (item.title || '').toLowerCase().trim() !== firstTitle
-            );
+            // Analyze each field and assign colors to unique values
+            const fields = ['title', 'authors', 'doi', 'year', 'journal'];
 
-            // Check authors differences
-            const firstAuthors = (group.items[0].authors || []).map(a => a.toLowerCase().trim()).sort().join('|');
-            differences.authors = group.items.some(item =>
-                ((item.authors || []).map(a => a.toLowerCase().trim()).sort().join('|')) !== firstAuthors
-            );
+            fields.forEach(field => {
+                const uniqueValues = new Map();
 
-            // Check DOI differences
-            const firstDoi = (group.items[0].doi || '').toLowerCase().trim();
-            differences.doi = group.items.some(item =>
-                (item.doi || '').toLowerCase().trim() !== firstDoi
-            );
+                group.items.forEach(item => {
+                    let value;
 
-            // Check year differences
-            const firstYear = group.items[0].year;
-            differences.year = group.items.some(item => item.year !== firstYear);
+                    if (field === 'authors') {
+                        value = (item.authors || []).join('|');
+                    } else if (field === 'year') {
+                        value = item.year ? item.year.toString() : 'N/A';
+                    } else {
+                        value = (item[field] || 'N/A').toString();
+                    }
 
-            // Check journal differences
-            const firstJournal = (group.items[0].journal || '').toLowerCase().trim();
-            differences.journal = group.items.some(item =>
-                (item.journal || '').toLowerCase().trim() !== firstJournal
-            );
+                    // Normalize for comparison
+                    const normalizedValue = value.toLowerCase().trim();
 
-            return differences;
+                    if (!uniqueValues.has(normalizedValue)) {
+                        uniqueValues.set(normalizedValue, value);
+                    }
+                });
+
+                // Only assign colors if there are multiple unique values
+                if (uniqueValues.size > 1) {
+                    let colorIndex = 0;
+                    uniqueValues.forEach((originalValue, normalizedValue) => {
+                        colorMaps[field].set(normalizedValue, HIGHLIGHT_COLORS[colorIndex % HIGHLIGHT_COLORS.length]);
+                        colorIndex++;
+                    });
+                }
+            });
+
+            return colorMaps;
         }
 
-        // Helper function to wrap text with highlight if there are differences
-        function highlightIfDifferent(text, hasDifference, highlightClass) {
-            if (!hasDifference) return text;
-            return `<span class="highlight-diff ${highlightClass}">${text}</span>`;
+        // Helper function to wrap text with highlight based on color mapping
+        function highlightWithColor(text, normalizedValue, colorMap) {
+            if (colorMap.size === 0 || !text) return text || 'N/A';
+
+            const color = colorMap.get(normalizedValue.toLowerCase().trim());
+            if (!color) return text;
+
+            return `<span class="highlight-diff" style="background-color: ${color.bg}; color: ${color.text};">${text}</span>`;
         }
 
         function matchField(study, field, value) {
@@ -6276,15 +6299,18 @@ HERE THE TABLE:
             listDiv.innerHTML = '';
 
             doiDuplicates.forEach((group, groupIndex) => {
-                // Analyze differences in this group
-                const diffs = analyzeGroupDifferences(group);
+                // Analyze differences and get color mappings
+                const colorMaps = analyzeGroupWithColorMapping(group);
 
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'duplicate-card';
 
+                // Show DOI in header (only highlight if there are differences)
+                const doiDisplay = highlightWithColor(group.doi, group.doi, colorMaps.doi);
+
                 let html = `
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-lg">Grupo ${groupIndex + 1} - DOI: ${highlightIfDifferent(group.doi, diffs.doi, 'highlight-doi')}</h3>
+                        <h3 class="font-bold text-lg">Grupo ${groupIndex + 1} - DOI: ${doiDisplay}</h3>
                         <div class="flex gap-2">
                             <button onclick="removeDuplicatesFromGroup(${groupIndex}, 'doi')"
                                 class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
@@ -6300,11 +6326,17 @@ HERE THE TABLE:
                 `;
 
                 group.items.forEach((item, itemIndex) => {
-                    const titleDisplay = highlightIfDifferent(item.title, diffs.title, 'highlight-title');
+                    // Apply highlights with unique colors per value
+                    const titleDisplay = highlightWithColor(item.title, item.title, colorMaps.title);
+
                     const authorsText = item.authors.slice(0, 3).join(', ') + (item.authors.length > 3 ? ' et al.' : '');
-                    const authorsDisplay = highlightIfDifferent(authorsText, diffs.authors, 'highlight-authors');
-                    const yearDisplay = highlightIfDifferent(item.year || 'N/A', diffs.year, 'highlight-year');
-                    const journalDisplay = item.journal ? highlightIfDifferent(item.journal, diffs.journal, 'highlight-journal') : '';
+                    const authorsNormalized = (item.authors || []).join('|');
+                    const authorsDisplay = highlightWithColor(authorsText, authorsNormalized, colorMaps.authors);
+
+                    const yearText = item.year ? item.year.toString() : 'N/A';
+                    const yearDisplay = highlightWithColor(yearText, yearText, colorMaps.year);
+
+                    const journalDisplay = item.journal ? highlightWithColor(item.journal, item.journal, colorMaps.journal) : '';
 
                     html += `
                         <div class="duplicate-item" id="doi-group-${groupIndex}-item-${itemIndex}">
@@ -6486,8 +6518,8 @@ HERE THE TABLE:
             listDiv.innerHTML = '';
 
             titleDuplicates.forEach((group, groupIndex) => {
-                // Analyze differences in this group
-                const diffs = analyzeGroupDifferences(group);
+                // Analyze differences and get color mappings
+                const colorMaps = analyzeGroupWithColorMapping(group);
 
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'duplicate-card';
@@ -6510,12 +6542,20 @@ HERE THE TABLE:
                 `;
 
                 group.items.forEach((item, itemIndex) => {
-                    const titleDisplay = highlightIfDifferent(item.title, diffs.title, 'highlight-title');
-                    const doiDisplay = highlightIfDifferent(item.doi || 'N/A', diffs.doi, 'highlight-doi');
+                    // Apply highlights with unique colors per value
+                    const titleDisplay = highlightWithColor(item.title, item.title, colorMaps.title);
+
+                    const doiText = item.doi || 'N/A';
+                    const doiDisplay = highlightWithColor(doiText, doiText, colorMaps.doi);
+
                     const authorsText = item.authors.slice(0, 2).join(', ') + (item.authors.length > 2 ? ' et al.' : '');
-                    const authorsDisplay = highlightIfDifferent(authorsText, diffs.authors, 'highlight-authors');
-                    const yearDisplay = highlightIfDifferent(item.year || 'N/A', diffs.year, 'highlight-year');
-                    const journalDisplay = item.journal ? highlightIfDifferent(item.journal, diffs.journal, 'highlight-journal') : '';
+                    const authorsNormalized = (item.authors || []).join('|');
+                    const authorsDisplay = highlightWithColor(authorsText, authorsNormalized, colorMaps.authors);
+
+                    const yearText = item.year ? item.year.toString() : 'N/A';
+                    const yearDisplay = highlightWithColor(yearText, yearText, colorMaps.year);
+
+                    const journalDisplay = item.journal ? highlightWithColor(item.journal, item.journal, colorMaps.journal) : '';
 
                     html += `
                         <div class="duplicate-item" id="title-group-${groupIndex}-item-${itemIndex}">
