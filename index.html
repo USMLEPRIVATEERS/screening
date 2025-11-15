@@ -6304,6 +6304,7 @@ HERE THE TABLE:
 
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'duplicate-card';
+                groupDiv.setAttribute('data-group-index', groupIndex);
 
                 // Show DOI in header (only highlight if there are differences)
                 const doiDisplay = highlightWithColor(group.doi, group.doi, colorMaps.doi);
@@ -6427,13 +6428,16 @@ HERE THE TABLE:
 
             // Remove the group card visually with animation
             const listDiv = type === 'doi' ? document.getElementById('doiDuplicatesList') : document.getElementById('titleDuplicatesList');
-            const cards = listDiv.getElementsByClassName('duplicate-card');
-            if (cards[groupIndex]) {
-                cards[groupIndex].style.transition = 'opacity 0.3s, transform 0.3s';
-                cards[groupIndex].style.opacity = '0';
-                cards[groupIndex].style.transform = 'scale(0.95)';
+
+            // Find the card by data-group-index attribute (not by position in list)
+            const card = listDiv.querySelector(`[data-group-index="${groupIndex}"]`);
+
+            if (card) {
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.95)';
                 setTimeout(() => {
-                    cards[groupIndex].remove();
+                    card.remove();
 
                     // Check if there are any remaining groups
                     const remainingCards = listDiv.getElementsByClassName('duplicate-card');
@@ -6523,6 +6527,7 @@ HERE THE TABLE:
 
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'duplicate-card';
+                groupDiv.setAttribute('data-group-index', groupIndex);
 
                 let html = `
                     <div class="flex justify-between items-center mb-3">
